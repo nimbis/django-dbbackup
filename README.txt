@@ -84,6 +84,15 @@ DBBACKUP_S3_DOMAIN (optional)
     'https://s3.amazonaws.com/'.
 
 
+COMMON ERRORS
+-------------
+ImportError: No module named streaming using AmazonS3
+    This is caused by an installation issue installing simples3-1.0-alpha via
+    PyPI. If you force pip to install version 1.0 (rather than 1.0-alpha) the
+    issue should go away.
+    >> pip install simples3==1.0
+
+
 
 =====================
  DBBackup to Dropbox
@@ -155,7 +164,7 @@ DBBACKUP_DROPBOX_DIRECTORY (optional)
 
 COMMON ERRORS
 -------------
-Error: ERROR [403] 'The provided token does not allow this operation'
+ERROR [403] 'The provided token does not allow this operation'
     Creating an app in Dropbox defaults access to "app_folder" as opposed
     to whole folder. Try changing the setting DBBACKUP_DROPBOX_ACCESS_TYPE
     to 'app_folder'. (Ref: issue #9)
