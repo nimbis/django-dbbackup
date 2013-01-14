@@ -2,12 +2,10 @@
 S3 Storage object.
 """
 import os
-import tempfile
-from shutil import copyfileobj
 
+import boto
+from boto.s3.key import Key
 from django.conf import settings
-from simples3.streaming import StreamingS3Bucket
-from simples3.utils import aws_urlquote
 
 from .base import BaseStorage, StorageError
 
@@ -28,7 +26,8 @@ class Storage(BaseStorage):
     def __init__(self, server_name=None):
         self._check_filesystem_errors()
         self.name = 'AmazonS3'
-        self.baseurl = self.S3_DOMAIN + aws_urlquote(self.S3_BUCKET)
+        self.conn = boto.connect_s3(self.S3_ACCESS_KEY, self.S3_SECRET_KEY)
+        self.bucket = self.conn.get_bucket(self.S3_BUCKET)
         BaseStorage.__init__(self)
 
     def _check_filesystem_errors(self):
@@ -46,28 +45,27 @@ class Storage(BaseStorage):
 
     @property
     def bucket(self):
-        return StreamingS3Bucket(self.S3_BUCKET, self.S3_ACCESS_KEY,
-                                 self.S3_SECRET_KEY, base_url=self.baseurl)
+        return self.bucket
 
     def backup_dir(self):
         return self.S3_DIRECTORY
 
     def delete_file(self, filepath):
         """ Delete the specified filepath. """
-        del self.bucket[filepath]
+        self.bucket.delete_key(filepath)
 
     def list_directory(self):
         """ List all stored backups for the specified. """
-        return [x[0] for x in self.bucket.listdir(self.S3_DIRECTORY)]
+        return self.bucket.list(prefix=self.S3_DIRECTORY)
 
     def write_file(self, filehandle):
         """ Write the specified file. """
         filepath = os.path.join(self.S3_DIRECTORY, filehandle.name)
-        self.bucket.put_file(filepath, filehandle)
+        key = Key(self.bucket)
+        key.key = filepath
+        filehandle.seek(0)
+        key.set_contents_from_file(filehandle)
 
     def read_file(self, filepath):
         """ Read the specified file and return it's handle. """
-        response = self.bucket.get(filepath)
-        filehandle = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
-        copyfileobj(response, filehandle)
-        return filehandle
+        return self.bucket.get_key(filepath)
