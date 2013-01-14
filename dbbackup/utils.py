@@ -12,9 +12,16 @@ from functools import wraps
 FAKE_HTTP_REQUEST = HttpRequest()
 FAKE_HTTP_REQUEST.META['SERVER_NAME'] = ''
 FAKE_HTTP_REQUEST.META['SERVER_PORT'] = ''
+FAKE_HTTP_REQUEST.META['HTTP_HOST'] = 'django-dbbackup'
 
-BYTES = (('PB', 1125899906842624.0), ('TB', 1099511627776.0), ('GB', 1073741824.0),
-    ('MB', 1048576.0), ('KB', 1024.0), ('B', 1.0))
+BYTES = (
+    ('PB', 1125899906842624.0),
+    ('TB', 1099511627776.0),
+    ('GB', 1073741824.0),
+    ('MB', 1048576.0),
+    ('KB', 1024.0),
+    ('B', 1.0)
+)
 
 
 ###################################
@@ -31,6 +38,7 @@ def bytes_to_str(byteVal, decimals=1):
                 return "%s %s" % (round(byteVal / byte, decimals), unit)
     return "%s B" % byteVal
 
+
 def handle_size(filehandle):
     """ Given a filehandle return the filesize. """
     filehandle.seek(0, 2)
@@ -44,6 +52,7 @@ def handle_size(filehandle):
 def email_uncaught_exception(func):
     """ Email uncaught exceptions to the SERVER_EMAIL. """
     module = func.__module__
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
@@ -51,7 +60,8 @@ def email_uncaught_exception(func):
         except:
             if getattr(settings, 'DBBACKUP_SEND_EMAIL', True):
                 excType, excValue, traceback = sys.exc_info()
-                reporter = ExceptionReporter(FAKE_HTTP_REQUEST, excType, excValue, traceback.tb_next)
+                reporter = ExceptionReporter(FAKE_HTTP_REQUEST, excType,
+                                             excValue, traceback.tb_next)
                 subject = "Cron: Uncaught exception running %s" % module
                 body = reporter.get_traceback_html()
                 msgFrom = settings.SERVER_EMAIL
