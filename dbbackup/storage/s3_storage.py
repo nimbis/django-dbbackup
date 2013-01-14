@@ -1,12 +1,15 @@
 """
 S3 Storage object.
 """
-import os, tempfile, sys
+import os
+import tempfile
 from shutil import copyfileobj
-from .base import BaseStorage, StorageError
+
 from django.conf import settings
 from simples3.streaming import StreamingS3Bucket
 from simples3.utils import aws_urlquote
+
+from .base import BaseStorage, StorageError
 
 
 ################################
@@ -19,7 +22,7 @@ class Storage(BaseStorage):
     S3_ACCESS_KEY = getattr(settings, 'DBBACKUP_S3_ACCESS_KEY', None)
     S3_SECRET_KEY = getattr(settings, 'DBBACKUP_S3_SECRET_KEY', None)
     S3_DOMAIN = getattr(settings, 'DBBACKUP_S3_DOMAIN', 'https://s3.amazonaws.com/')
-    S3_DIRECTORY =  getattr(settings, 'DBBACKUP_S3_DIRECTORY', "django-dbbackups/")
+    S3_DIRECTORY = getattr(settings, 'DBBACKUP_S3_DIRECTORY', "django-dbbackups/")
     S3_DIRECTORY = '%s/' % S3_DIRECTORY.strip('/')
 
     def __init__(self, server_name=None):
@@ -44,7 +47,7 @@ class Storage(BaseStorage):
     @property
     def bucket(self):
         return StreamingS3Bucket(self.S3_BUCKET, self.S3_ACCESS_KEY,
-            self.S3_SECRET_KEY, base_url=self.baseurl)
+                                 self.S3_SECRET_KEY, base_url=self.baseurl)
 
     def backup_dir(self):
         return self.S3_DIRECTORY
@@ -65,6 +68,6 @@ class Storage(BaseStorage):
     def read_file(self, filepath):
         """ Read the specified file and return it's handle. """
         response = self.bucket.get(filepath)
-        filehandle = tempfile.SpooledTemporaryFile(max_size=10*1024*1024)
+        filehandle = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
         copyfileobj(response, filehandle)
         return filehandle
