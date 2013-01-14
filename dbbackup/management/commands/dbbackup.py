@@ -4,16 +4,19 @@ Save backup files to Dropbox.
 import re
 import datetime
 import tempfile
+from optparse import make_option
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.core.management.base import CommandError
+from django.core.management.base import LabelCommand
+
 from ... import utils
 from ...dbcommands import DBCommands
 from ...dbcommands import DATE_FORMAT
 from ...storage.base import BaseStorage
 from ...storage.base import StorageError
-from django.conf import settings
-from django.core.management.base import BaseCommand
-from django.core.management.base import CommandError
-from django.core.management.base import LabelCommand
-from optparse import make_option
+
 
 DATABASE_KEYS = getattr(settings, 'DBBACKUP_DATABASES', settings.DATABASES.keys())
 
@@ -46,7 +49,7 @@ class Command(LabelCommand):
     def save_new_backup(self, database):
         """ Save a new backup file. """
         print "Backing Up Database: %s" % database['NAME']
-        backupfile = tempfile.SpooledTemporaryFile(max_size=10*1024*1024)
+        backupfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
         backupfile.name = self.dbcommands.filename(self.servername)
         self.dbcommands.run_backup_commands(backupfile)
         print "  Backup tempfile created: %s (%s)" % (backupfile.name, utils.handle_size(backupfile))
