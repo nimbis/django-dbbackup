@@ -19,6 +19,7 @@ from ...storage.base import StorageError
 
 
 DATABASE_KEYS = getattr(settings, 'DBBACKUP_DATABASES', settings.DATABASES.keys())
+CLEANUP_KEEP = getattr(settings, 'DBBACKUP_CLEANUP_KEEP', 10)
 
 
 class Command(LabelCommand):
@@ -57,14 +58,14 @@ class Command(LabelCommand):
         self.storage.write_file(backupfile)
 
     def cleanup_old_backups(self, database):
-        """ Cleanup old backups.  Delete everything but the last 10
-            backups, and any backup that occur on first of the month.
+        """ Cleanup old backups, keeping the number of backups specified by
+        DBBACKUP_CLEANUP_KEEP and any backups that occur on first of the month.
         """
         if self.clean:
             print "Cleaning Old Backups for: %s" % database['NAME']
             filepaths = self.storage.list_directory()
             filepaths = self.dbcommands.filter_filepaths(filepaths)
-            for filepath in sorted(filepaths[0:-10]):
+            for filepath in sorted(filepaths[0:-CLEANUP_KEEP]):
                 regex = self.dbcommands.filename_match(self.servername, '(.*?)')
                 datestr = re.findall(regex, filepath)[0]
                 dateTime = datetime.datetime.strptime(datestr, DATE_FORMAT)
