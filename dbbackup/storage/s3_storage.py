@@ -2,6 +2,7 @@
 S3 Storage object.
 """
 import os
+import tempfile
 
 import boto
 from boto.s3.key import Key
@@ -69,4 +70,8 @@ class Storage(BaseStorage):
 
     def read_file(self, filepath):
         """ Read the specified file and return it's handle. """
-        return self.bucket.get_key(filepath)
+        key = Key(self.bucket)
+        key.key = filepath
+        filehandle = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
+        key.get_contents_to_file(filehandle)
+        return filehandle
