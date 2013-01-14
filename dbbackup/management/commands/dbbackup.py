@@ -4,18 +4,22 @@ Save backup files to Dropbox.
 import re
 import datetime
 import tempfile
+from optparse import make_option
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.core.management.base import CommandError
+from django.core.management.base import LabelCommand
+
 from ... import utils
 from ...dbcommands import DBCommands
 from ...dbcommands import DATE_FORMAT
 from ...storage.base import BaseStorage
 from ...storage.base import StorageError
-from django.conf import settings
-from django.core.management.base import BaseCommand
-from django.core.management.base import CommandError
-from django.core.management.base import LabelCommand
-from optparse import make_option
+
 
 DATABASE_KEYS = getattr(settings, 'DBBACKUP_DATABASES', settings.DATABASES.keys())
+CLEANUP_KEEP = getattr(settings, 'DBBACKUP_CLEANUP_KEEP', 10)
 
 
 class Command(LabelCommand):
@@ -46,7 +50,7 @@ class Command(LabelCommand):
     def save_new_backup(self, database):
         """ Save a new backup file. """
         print "Backing Up Database: %s" % database['NAME']
-        backupfile = tempfile.SpooledTemporaryFile(max_size=10*1024*1024)
+        backupfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
         backupfile.name = self.dbcommands.filename(self.servername)
         self.dbcommands.run_backup_commands(backupfile)
         print "  Backup tempfile created: %s (%s)" % (backupfile.name, utils.handle_size(backupfile))
@@ -54,14 +58,14 @@ class Command(LabelCommand):
         self.storage.write_file(backupfile)
 
     def cleanup_old_backups(self, database):
-        """ Cleanup old backups.  Delete everything but the last 10
-            backups, and any backup that occur on first of the month.
+        """ Cleanup old backups, keeping the number of backups specified by
+        DBBACKUP_CLEANUP_KEEP and any backups that occur on first of the month.
         """
         if self.clean:
             print "Cleaning Old Backups for: %s" % database['NAME']
             filepaths = self.storage.list_directory()
             filepaths = self.dbcommands.filter_filepaths(filepaths)
-            for filepath in sorted(filepaths[0:-10]):
+            for filepath in sorted(filepaths[0:-CLEANUP_KEEP]):
                 regex = self.dbcommands.filename_match(self.servername, '(.*?)')
                 datestr = re.findall(regex, filepath)[0]
                 dateTime = datetime.datetime.strptime(datestr, DATE_FORMAT)

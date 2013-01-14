@@ -319,3 +319,7 @@ DBBACKUP_FILENAME_TEMPLATE (optional)
     time of day, week, or month.  For example, if you want to take advantage of
     Amazon S3's automatic expiry feature, you need to prefix your backups
     differently based on when you want them to expire.
+
+DBBACKUP_CLEANUP_KEEP (optional)
+    The number of backups to keep when specifying the --clean flag. Defaults to
+    keeping 10 + the first backup of each month.
