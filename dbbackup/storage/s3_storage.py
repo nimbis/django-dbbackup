@@ -56,7 +56,8 @@ class Storage(BaseStorage):
 
     def list_directory(self):
         """ List all stored backups for the specified. """
-        return self.bucket.list(prefix=self.S3_DIRECTORY)
+        return [k.name for k in
+                self.bucket.get_all_keys(prefix=self.S3_DIRECTORY)]
 
     def write_file(self, filehandle):
         """ Write the specified file. """
