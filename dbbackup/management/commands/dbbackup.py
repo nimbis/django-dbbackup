@@ -5,6 +5,7 @@ import re
 import datetime
 import tempfile
 from optparse import make_option
+import gzip
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -28,6 +29,7 @@ class Command(LabelCommand):
         make_option("-c", "--clean", help="Clean up old backup files", action="store_true", default=False),
         make_option("-d", "--database", help="Database to backup (default: everything)"),
         make_option("-s", "--servername", help="Specifiy server name to include in backup filename"),
+        make_option("-z", "--compress", help="Compress the backup files", action="store_true", default=False)
     )
 
     @utils.email_uncaught_exception
@@ -37,6 +39,7 @@ class Command(LabelCommand):
             self.clean = options.get('clean')
             self.database = options.get('database')
             self.servername = options.get('servername')
+            self.compress = options.get('compress')
             self.storage = BaseStorage.storage_factory()
             database_keys = (self.database,) if self.database else DATABASE_KEYS
             for database_key in database_keys:
@@ -53,9 +56,16 @@ class Command(LabelCommand):
         backupfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
         backupfile.name = self.dbcommands.filename(self.servername)
         self.dbcommands.run_backup_commands(backupfile)
-        print "  Backup tempfile created: %s (%s)" % (backupfile.name, utils.handle_size(backupfile))
+
+        if self.compress:
+            output_file = self.compress_file(backupfile)
+            backupfile.close()
+        else:
+            output_file = backupfile
+
+        print "  Backup tempfile created: %s (%s)" % (output_file.name, utils.handle_size(output_file))
         print "  Writing file to %s: %s" % (self.storage.name, self.storage.backup_dir())
-        self.storage.write_file(backupfile)
+        self.storage.write_file(output_file)
 
     def cleanup_old_backups(self, database):
         """ Cleanup old backups, keeping the number of backups specified by
@@ -72,3 +82,19 @@ class Command(LabelCommand):
                 if int(dateTime.strftime("%d")) != 1:
                     print "  Deleting: %s" % filepath
                     self.storage.delete_file(filepath)
+
+    def compress_file(self, input_file):
+        """ Compress this file using gzip.
+        The input and the output are filelike objects.
+        """
+        outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
+        outputfile.name = input_file.name + '.gz'
+
+        zipfile = gzip.GzipFile(fileobj=outputfile, mode="wb")
+        try:
+            input_file.seek(0)
+            zipfile.write(input_file.read())
+        finally:
+            zipfile.close()
+
+        return outputfile
