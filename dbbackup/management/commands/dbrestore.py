@@ -63,21 +63,26 @@ class Command(LabelCommand):
             self.filepath = filepaths[-1]
         # Restore the specified filepath backup
         print "  Restoring: %s" % self.filepath
-        backupfile = self.storage.read_file(self.filepath)
+        input_filename = self.filepath
+        inputfile = self.storage.read_file(input_filename)
 
-        if self.is_gzipfile():
-            inputfile = self.uncompress_file(backupfile)
-            backupfile.close()
-        else:
-            inputfile = backupfile
+        if self.get_extension(input_filename) == '.gpg':
+            unencrypted_file = self.unencrypt_file(inputfile)
+            inputfile.close()
+            inputfile = unencrypted_file
+            input_filename = inputfile.name
+
+        if self.get_extension(input_filename) == '.gz':
+            uncompressed_file = self.uncompress_file(inputfile)
+            inputfile.close()
+            inputfile = uncompressed_file
 
         print "  Restore tempfile created: %s" % utils.handle_size(inputfile)
         self.dbcommands.run_restore_commands(inputfile)
 
-    def is_gzipfile(self):
-        _, extension = os.path.splitext(self.filepath)
-
-        return extension == '.gz'
+    def get_extension(self, filename):
+        _, extension = os.path.splitext(filename)
+        return extension
 
     def uncompress_file(self, inputfile):
         """ Uncompress this file using gzip.
@@ -91,5 +96,44 @@ class Command(LabelCommand):
             outputfile.write(zipfile.read())
         finally:
             zipfile.close()
+
+        return outputfile
+
+    def unencrypt_file(self, inputfile):
+        """ Unencrypt this file using gpg.
+        The input and the output are filelike objects.
+        """
+        def get_passphrase():
+            print 'input passphrase:'
+            return raw_input()
+
+        import gnupg
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            new_basename = os.path.basename(inputfile.name).replace('.gpg', '')
+            temp_filename = os.path.join(temp_dir, new_basename)
+            try:
+                inputfile.seek(0)
+
+                g = gnupg.GPG()
+                result = g.decrypt_file(file=inputfile, passphrase=get_passphrase(), output=temp_filename)
+
+                if not result:
+                    raise Exception('Decryption failed; status: %s' % result.status)
+
+                outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
+                outputfile.name = new_basename
+
+                f = open(temp_filename)
+                try:
+                    outputfile.write(f.read())
+                finally:
+                    f.close()
+            finally:
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
+        finally:
+            os.rmdir(temp_dir)
 
         return outputfile
