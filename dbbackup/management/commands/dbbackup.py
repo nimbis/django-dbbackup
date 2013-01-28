@@ -1,6 +1,7 @@
 """
 Save backup files to Dropbox.
 """
+import os
 import re
 import datetime
 import tempfile
@@ -29,7 +30,8 @@ class Command(LabelCommand):
         make_option("-c", "--clean", help="Clean up old backup files", action="store_true", default=False),
         make_option("-d", "--database", help="Database to backup (default: everything)"),
         make_option("-s", "--servername", help="Specifiy server name to include in backup filename"),
-        make_option("-z", "--compress", help="Compress the backup files", action="store_true", default=False)
+        make_option("-z", "--compress", help="Compress the backup files", action="store_true", default=False),
+        make_option("-e", "--encrypt", help="Encrypt the backup files", action="store_true", default=False),
     )
 
     @utils.email_uncaught_exception
@@ -40,6 +42,7 @@ class Command(LabelCommand):
             self.database = options.get('database')
             self.servername = options.get('servername')
             self.compress = options.get('compress')
+            self.encrypt = options.get('encrypt')
             self.storage = BaseStorage.storage_factory()
             database_keys = (self.database,) if self.database else DATABASE_KEYS
             for database_key in database_keys:
@@ -53,15 +56,18 @@ class Command(LabelCommand):
     def save_new_backup(self, database):
         """ Save a new backup file. """
         print "Backing Up Database: %s" % database['NAME']
-        backupfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
-        backupfile.name = self.dbcommands.filename(self.servername)
-        self.dbcommands.run_backup_commands(backupfile)
+        output_file = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
+        output_file.name = self.dbcommands.filename(self.servername)
+        self.dbcommands.run_backup_commands(output_file)
 
         if self.compress:
-            output_file = self.compress_file(backupfile)
-            backupfile.close()
-        else:
-            output_file = backupfile
+            compressed_file = self.compress_file(output_file)
+            output_file.close()
+            output_file = compressed_file
+
+        if self.encrypt:
+            encrypted_file = self.encrypt_file(output_file)
+            output_file = encrypted_file
 
         print "  Backup tempfile created: %s (%s)" % (output_file.name, utils.handle_size(output_file))
         print "  Writing file to %s: %s" % (self.storage.name, self.storage.backup_dir())
@@ -96,5 +102,40 @@ class Command(LabelCommand):
             zipfile.write(input_file.read())
         finally:
             zipfile.close()
+
+        return outputfile
+
+    def encrypt_file(self, input_file):
+        """ Encrypt the file using gpg.
+        The input and the output are filelike objects. Closes the input file.
+        """
+        import gnupg
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            temp_filename = os.path.join(temp_dir, input_file.name + '.gpg')
+            try:
+                input_file.seek(0)
+
+                g = gnupg.GPG()
+                result = g.encrypt_file(input_file, output=temp_filename, recipients=settings.DBBACKUP_GPG_RECIPIENT)
+                input_file.close()
+
+                if not result:
+                    raise Exception('Encryption failed; status: %s' % result.status)
+
+                outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
+                outputfile.name = input_file.name + '.gpg'
+
+                f = open(temp_filename)
+                try:
+                    outputfile.write(f.read())
+                finally:
+                    f.close()
+            finally:
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
+        finally:
+            os.rmdir(temp_dir)
 
         return outputfile

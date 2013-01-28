@@ -20,7 +20,7 @@ DBBackup  - Backup your database to the specified storage. By default this
             will backup all databases specified in your settings.py file and
             will not delete any old backups. You can optionally specify a
             server name to be included in the backup filename.
-            >> dbbackup [-s <servername>] [-d <database>] [--clean] [--compress]
+            >> dbbackup [-s <servername>] [-d <database>] [--clean] [--compress] [--encrypt]
 
 DBRestore - Restore your database from the specified storage. By default this
             will lookup the latest backup and restore from that. You may
@@ -323,3 +323,21 @@ DBBACKUP_FILENAME_TEMPLATE (optional)
 DBBACKUP_CLEANUP_KEEP (optional)
     The number of backups to keep when specifying the --clean flag. Defaults to
     keeping 10 + the first backup of each month.
+
+DBBACKUP_GPG_RECIPIENT (optional)
+    The name of the key that is used for encryption. This setting is only used when making backup with the --encrypt opton.
+
+
+
+============
+ ENCRYPTION
+============
+
+You can encrypt a backup with the --encrypt option. The backup is done using gpg.
+    >> python manage.py dbbackup --encrypt
+
+Requirements:
+- Install the python package 'python-gnupg'
+    >> pip install python-gnupg
+- You need gpg key.
+- Set the setting 'DBBACKUP_GPG_RECIPIENT' to the name of the gpg key.
