@@ -2,6 +2,10 @@
 Restore pgdump files from Dropbox.
 See __init__.py for a list of options.
 """
+import os
+import tempfile
+import gzip
+
 from ... import utils
 from ...dbcommands import DBCommands
 from ...storage.base import BaseStorage
@@ -60,5 +64,32 @@ class Command(LabelCommand):
         # Restore the specified filepath backup
         print "  Restoring: %s" % self.filepath
         backupfile = self.storage.read_file(self.filepath)
-        print "  Restore tempfile created: %s" % utils.handle_size(backupfile)
-        self.dbcommands.run_restore_commands(backupfile)
+
+        if self.is_gzipfile():
+            inputfile = self.uncompress_file(backupfile)
+            backupfile.close()
+        else:
+            inputfile = backupfile
+
+        print "  Restore tempfile created: %s" % utils.handle_size(inputfile)
+        self.dbcommands.run_restore_commands(inputfile)
+
+    def is_gzipfile(self):
+        _, extension = os.path.splitext(self.filepath)
+
+        return extension == '.gz'
+
+    def uncompress_file(self, inputfile):
+        """ Uncompress this file using gzip.
+        The input and the output are filelike objects.
+        """
+        outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
+
+        zipfile = gzip.GzipFile(fileobj=inputfile, mode="rb")
+        try:
+            inputfile.seek(0)
+            outputfile.write(zipfile.read())
+        finally:
+            zipfile.close()
+
+        return outputfile
