@@ -29,6 +29,8 @@ DBRestore - Restore your database from the specified storage. By default this
             also specify an explicit local file to backup from.
             >> dbrestore [-d <database>] [-s <servername>] [-f <localfile>]
 
+backup_media - Backup media files. Default this will backup the files in the MEDIA_ROOT.
+               Optionally you can set the DBBACKUP_MEDIA_PATH setting.
 
 
 =======================
@@ -327,6 +329,8 @@ DBBACKUP_CLEANUP_KEEP (optional)
 DBBACKUP_GPG_RECIPIENT (optional)
     The name of the key that is used for encryption. This setting is only used when making backup with the --encrypt opton.
 
+DBBACKUP_MEDIA_PATH (optional)
+    The path that will be backed up by the 'backup_media' command.
 
 
 ============
