@@ -20,7 +20,7 @@ DBBackup  - Backup your database to the specified storage. By default this
             will backup all databases specified in your settings.py file and
             will not delete any old backups. You can optionally specify a
             server name to be included in the backup filename.
-            >> dbbackup [-s <servername>] [-d <database>] [--clean]
+            >> dbbackup [-s <servername>] [-d <database>] [--clean] [--compress]
 
 DBRestore - Restore your database from the specified storage. By default this
             will lookup the latest backup and restore from that. You may
