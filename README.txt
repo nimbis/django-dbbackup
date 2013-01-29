@@ -31,6 +31,7 @@ DBRestore - Restore your database from the specified storage. By default this
 
 backup_media - Backup media files. Default this will backup the files in the MEDIA_ROOT.
                Optionally you can set the DBBACKUP_MEDIA_PATH setting.
+               >> backup_media [--encrypt]
 
 
 =======================
