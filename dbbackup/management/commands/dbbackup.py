@@ -1,7 +1,6 @@
 """
 Save backup files to Dropbox.
 """
-import os
 import re
 import datetime
 import tempfile
@@ -25,7 +24,7 @@ CLEANUP_KEEP = getattr(settings, 'DBBACKUP_CLEANUP_KEEP', 10)
 
 
 class Command(LabelCommand):
-    help = "dbbackup [-c] [-d <dbname>] [-s <servername>]"
+    help = "dbbackup [-c] [-d <dbname>] [-s <servername>] [--compress] [--encrypt]"
     option_list = BaseCommand.option_list + (
         make_option("-c", "--clean", help="Clean up old backup files", action="store_true", default=False),
         make_option("-d", "--database", help="Database to backup (default: everything)"),
@@ -66,7 +65,7 @@ class Command(LabelCommand):
             output_file = compressed_file
 
         if self.encrypt:
-            encrypted_file = self.encrypt_file(output_file)
+            encrypted_file = utils.encrypt_file(output_file)
             output_file = encrypted_file
 
         print "  Backup tempfile created: %s (%s)" % (output_file.name, utils.handle_size(output_file))
@@ -102,40 +101,5 @@ class Command(LabelCommand):
             zipfile.write(input_file.read())
         finally:
             zipfile.close()
-
-        return outputfile
-
-    def encrypt_file(self, input_file):
-        """ Encrypt the file using gpg.
-        The input and the output are filelike objects. Closes the input file.
-        """
-        import gnupg
-
-        temp_dir = tempfile.mkdtemp()
-        try:
-            temp_filename = os.path.join(temp_dir, input_file.name + '.gpg')
-            try:
-                input_file.seek(0)
-
-                g = gnupg.GPG()
-                result = g.encrypt_file(input_file, output=temp_filename, recipients=settings.DBBACKUP_GPG_RECIPIENT)
-                input_file.close()
-
-                if not result:
-                    raise Exception('Encryption failed; status: %s' % result.status)
-
-                outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
-                outputfile.name = input_file.name + '.gpg'
-
-                f = open(temp_filename)
-                try:
-                    outputfile.write(f.read())
-                finally:
-                    f.close()
-            finally:
-                if os.path.exists(temp_filename):
-                    os.remove(temp_filename)
-        finally:
-            os.rmdir(temp_dir)
 
         return outputfile

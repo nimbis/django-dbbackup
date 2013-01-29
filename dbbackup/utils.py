@@ -2,6 +2,8 @@
 Util functions for dropbox application.
 """
 import sys
+import os
+import tempfile
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.db import connection
@@ -73,3 +75,39 @@ def email_uncaught_exception(func):
         finally:
             connection.close()
     return wrapper
+
+
+def encrypt_file(input_file):
+    """ Encrypt the file using gpg.
+    The input and the output are filelike objects. Closes the input file.
+    """
+    import gnupg
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        temp_filename = os.path.join(temp_dir, input_file.name + '.gpg')
+        try:
+            input_file.seek(0)
+
+            g = gnupg.GPG()
+            result = g.encrypt_file(input_file, output=temp_filename, recipients=settings.DBBACKUP_GPG_RECIPIENT)
+            input_file.close()
+
+            if not result:
+                raise Exception('Encryption failed; status: %s' % result.status)
+
+            outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
+            outputfile.name = input_file.name + '.gpg'
+
+            f = open(temp_filename)
+            try:
+                outputfile.write(f.read())
+            finally:
+                f.close()
+        finally:
+            if os.path.exists(temp_filename):
+                os.remove(temp_filename)
+    finally:
+        os.rmdir(temp_dir)
+
+    return outputfile
