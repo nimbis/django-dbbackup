@@ -3,6 +3,7 @@ from datetime import datetime
 import tarfile
 import tempfile
 from optparse import make_option
+import re
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -14,29 +15,33 @@ from ...storage.base import StorageError
 
 
 DATE_FORMAT = getattr(settings, 'DBBACKUP_DATE_FORMAT', '%Y-%m-%d-%H%M%S')
+CLEANUP_KEEP = getattr(settings, 'DBBACKUP_CLEANUP_KEEP', 10)
 
 
 class Command(BaseCommand):
     help = "backup_media [--encrypt]"
     option_list = BaseCommand.option_list + (
+        make_option("-c", "--clean", help="Clean up old backup files", action="store_true", default=False),
         make_option("-e", "--encrypt", help="Encrypt the backup files", action="store_true", default=False),
     )
 
     @utils.email_uncaught_exception
     def handle(self, *args, **options):
         try:
-            self.encrypt = options.get('encrypt')
             self.storage = BaseStorage.storage_factory()
+            self.backup_mediafiles(options.get('encrypt'))
 
-            self.backup_mediafiles()
+            if options.get('clean'):
+                self.cleanup_old_backups()
+
         except StorageError, err:
             raise CommandError(err)
 
-    def backup_mediafiles(self):
+    def backup_mediafiles(self, encrypt):
         print "Backing up media files"
         output_file = self.create_backup_file(self.get_source_dir(), self.get_backup_basename())
 
-        if self.encrypt:
+        if encrypt:
             encrypted_file = utils.encrypt_file(output_file)
             output_file = encrypted_file
 
@@ -45,10 +50,13 @@ class Command(BaseCommand):
         self.storage.write_file(output_file)
 
     def get_backup_basename(self):
-        database_name = settings.DATABASES['default']['NAME']
-        timestamp = datetime.now().strftime(DATE_FORMAT)
+        return '%s-%s.media.tar.gz' % (
+            self.get_databasename(),
+            datetime.now().strftime(DATE_FORMAT)
+        )
 
-        return '%s-%s.media.tar.gz' % (database_name, timestamp)
+    def get_databasename(self):
+        return settings.DATABASES['default']['NAME']
 
     def create_backup_file(self, source_dir, backup_basename):
         temp_dir = tempfile.mkdtemp()
@@ -79,3 +87,39 @@ class Command(BaseCommand):
 
     def get_source_dir(self):
         return getattr(settings, 'DBBACKUP_MEDIA_PATH') or settings.MEDIA_ROOT
+
+    def cleanup_old_backups(self):
+        """ Cleanup old backups, keeping the number of backups specified by
+        DBBACKUP_CLEANUP_KEEP and any backups that occur on first of the month.
+        """
+        print "Cleaning Old Backups for media files"
+
+        file_list = self.get_backup_file_list()
+
+        for backup_date, filename in file_list[0:-CLEANUP_KEEP]:
+            if int(backup_date.strftime("%d")) != 1:
+                print "  Deleting: %s" % filename
+                self.storage.delete_file(filename)
+
+    def get_backup_file_regex(self):
+        return
+
+    def get_backup_file_list(self):
+        """ Return a list of backup files including the backup date. The result is a list of tuples (datetime, filename).
+            The list is sorted by date.
+        """
+        media_re = re.compile(r'%s-(.*).media.tar.gz' % self.get_databasename())
+
+        def is_media_backup(filename):
+            return media_re.search(filename)
+
+        def get_datetime_from_filename(filename):
+            datestr = re.findall(media_re, filename)[0]
+            return datetime.strptime(datestr, DATE_FORMAT)
+
+        file_list = [
+            (get_datetime_from_filename(f), f)
+            for f in self.storage.list_directory()
+            if is_media_backup(f)
+        ]
+        return sorted(file_list, key=lambda v: v[0])

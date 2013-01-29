@@ -31,7 +31,7 @@ DBRestore - Restore your database from the specified storage. By default this
 
 backup_media - Backup media files. Default this will backup the files in the MEDIA_ROOT.
                Optionally you can set the DBBACKUP_MEDIA_PATH setting.
-               >> backup_media [--encrypt]
+               >> backup_media [--encrypt] [--clean]
 
 
 =======================
@@ -328,10 +328,10 @@ DBBACKUP_CLEANUP_KEEP (optional)
     keeping 10 + the first backup of each month.
 
 DBBACKUP_GPG_RECIPIENT (optional)
-    The name of the key that is used for encryption. This setting is only used when making backup with the --encrypt opton.
+    The name of the key that is used for encryption. This setting is only used when making a backup with the --encrypt opton.
 
 DBBACKUP_MEDIA_PATH (optional)
-    The path that will be backed up by the 'backup_media' command.
+    The path that will be backed up by the 'backup_media' command. If this option is not set, then the MEDIA_ROOT setting is used.
 
 
 ============
