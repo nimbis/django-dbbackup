@@ -22,13 +22,16 @@ class Command(BaseCommand):
     help = "backup_media [--encrypt]"
     option_list = BaseCommand.option_list + (
         make_option("-c", "--clean", help="Clean up old backup files", action="store_true", default=False),
+        make_option("-s", "--servername", help="Specify server name to include in backup filename"),
         make_option("-e", "--encrypt", help="Encrypt the backup files", action="store_true", default=False),
     )
 
     @utils.email_uncaught_exception
     def handle(self, *args, **options):
         try:
+            self.servername = options.get('servername')
             self.storage = BaseStorage.storage_factory()
+
             self.backup_mediafiles(options.get('encrypt'))
 
             if options.get('clean'):
@@ -50,8 +53,14 @@ class Command(BaseCommand):
         self.storage.write_file(output_file)
 
     def get_backup_basename(self):
-        return '%s-%s.media.tar.gz' % (
+        # todo: use DBBACKUP_FILENAME_TEMPLATE
+        server_name = self.get_servername()
+        if server_name:
+            server_name = '-%s' % server_name
+
+        return '%s%s-%s.media.tar.gz' % (
             self.get_databasename(),
+            server_name,
             datetime.now().strftime(DATE_FORMAT)
         )
 
@@ -96,7 +105,11 @@ class Command(BaseCommand):
         """ Return a list of backup files including the backup date. The result is a list of tuples (datetime, filename).
             The list is sorted by date.
         """
-        media_re = re.compile(r'%s-(.*).media.tar.gz' % self.get_databasename())
+        server_name = self.get_servername()
+        if server_name:
+            server_name = '-%s' % server_name
+
+        media_re = re.compile(r'%s%s-(.*)\.media\.tar\.gz' % (self.get_databasename(), server_name))
 
         def is_media_backup(filename):
             return media_re.search(filename)
@@ -111,3 +124,6 @@ class Command(BaseCommand):
             if is_media_backup(f)
         ]
         return sorted(file_list, key=lambda v: v[0])
+
+    def get_servername(self):
+        return self.servername or getattr(settings, 'DBBACKUP_SERVER_NAME', '')
