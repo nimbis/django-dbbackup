@@ -96,18 +96,27 @@ def encrypt_file(input_file):
             if not result:
                 raise Exception('Encryption failed; status: %s' % result.status)
 
-            outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
-            outputfile.name = input_file.name + '.gpg'
-
-            f = open(temp_filename)
-            try:
-                outputfile.write(f.read())
-            finally:
-                f.close()
+            return create_spooled_temporary_file(temp_filename, input_file.name + '.gpg')
         finally:
             if os.path.exists(temp_filename):
                 os.remove(temp_filename)
     finally:
         os.rmdir(temp_dir)
 
-    return outputfile
+
+def create_spooled_temporary_file(input_filepath, target_filename):
+    """
+    Create a spooled temporary file.
+    - input_filepath: path of input file
+    - target_filename: file of the spooled temporary file
+    """
+    spooled_file = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
+    spooled_file.name = target_filename
+
+    f = open(input_filepath)
+    try:
+        spooled_file.write(f.read())
+    finally:
+        f.close()
+
+    return spooled_file

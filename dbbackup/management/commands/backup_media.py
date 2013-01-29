@@ -69,21 +69,12 @@ class Command(BaseCommand):
                 finally:
                     tar_file.close()
 
-                    outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
-                    outputfile.name = backup_basename
-
-                    f = open(backup_filename)
-                    try:
-                        outputfile.write(f.read())
-                    finally:
-                        f.close()
+                return utils.create_spooled_temporary_file(backup_filename, backup_basename)
             finally:
                 if os.path.exists(backup_filename):
                     os.remove(backup_filename)
         finally:
             os.rmdir(temp_dir)
-
-        return outputfile
 
     def get_source_dir(self):
         return getattr(settings, 'DBBACKUP_MEDIA_PATH') or settings.MEDIA_ROOT
@@ -100,9 +91,6 @@ class Command(BaseCommand):
             if int(backup_date.strftime("%d")) != 1:
                 print "  Deleting: %s" % filename
                 self.storage.delete_file(filename)
-
-    def get_backup_file_regex(self):
-        return
 
     def get_backup_file_list(self):
         """ Return a list of backup files including the backup date. The result is a list of tuples (datetime, filename).
