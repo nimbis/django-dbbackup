@@ -3,6 +3,7 @@ S3 Storage object.
 """
 import os
 import tempfile
+from cStringIO import StringIO
 
 import boto
 from boto.s3.key import Key
@@ -61,12 +62,36 @@ class Storage(BaseStorage):
                 self.bucket.get_all_keys(prefix=self.S3_DIRECTORY)]
 
     def write_file(self, filehandle):
-        """ Write the specified file. """
+        """ Write the specified file.
+            Use multipart upload because normal upload maximum is 5 GB.
+        """
         filepath = os.path.join(self.S3_DIRECTORY, filehandle.name)
-        key = Key(self.bucket)
-        key.key = filepath
+
         filehandle.seek(0)
-        key.set_contents_from_file(filehandle)
+
+        mp = self.bucket.initiate_multipart_upload(filepath)
+
+        try:
+            part_index = 1
+            while True:
+                buffer = filehandle.read(5 * 1024 * 1024)
+
+                if not buffer:
+                    break
+                else:
+                    string_file = StringIO(buffer)
+                    try:
+                        string_file.seek(0)
+                        mp.upload_part_from_file(string_file, part_index)
+                    finally:
+                        string_file.close()
+
+                    part_index += 1
+
+            mp.complete_upload()
+        except:
+            mp.cancel_upload()
+            raise
 
     def read_file(self, filepath):
         """ Read the specified file and return it's handle. """
