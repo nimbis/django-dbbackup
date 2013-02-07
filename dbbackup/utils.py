@@ -115,7 +115,13 @@ def create_spooled_temporary_file(input_filepath, target_filename):
 
     f = open(input_filepath)
     try:
-        spooled_file.write(f.read())
+        while True:
+            data = f.read(1024 * 1000)
+
+            if data:
+                spooled_file.write(data)
+            else:
+                break
     finally:
         f.close()
 
