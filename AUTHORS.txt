@@ -2,6 +2,7 @@ Primary Authors:
   * Michael Shepanski
 
 Contributors:
+  * Hannes Hapke
   * Joe Hu
   * Nathan Duthoit
   * Rich Leland

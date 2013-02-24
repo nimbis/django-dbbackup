@@ -4,14 +4,17 @@ Dropbox API Storage object.
 import pickle
 import os
 import tempfile
+from shutil import copyfileobj
 from .base import BaseStorage, StorageError
 from dropbox.rest import ErrorResponse
 from django.conf import settings
 from dropbox.client import DropboxClient
 from dropbox import session
 
-DEFAULT_ACCESS_TYPE = 'dropbox'
+DEFAULT_ACCESS_TYPE = 'app_folder'
 
+MAX_SPOOLED_SIZE = 10 * 1024 * 1024
+FILE_SIZE_LIMIT = 145 * 1024 * 1024
 
 ################################
 #  Dropbox Storage Object
@@ -52,32 +55,92 @@ class Storage(BaseStorage):
 
     def delete_file(self, filepath):
         """ Delete the specified filepath. """
-        self.run_dropbox_action(self.dropbox.file_delete, filepath)
+        files = self.list_directory(raw=True)
+        to_be_deleted = [x for x in files if os.path.splitext(x)[0] == filepath]
 
-    def list_directory(self):
+        for name in to_be_deleted:
+            self.run_dropbox_action(self.dropbox.file_delete, name)
+
+    def list_directory(self, raw=False):
         """ List all stored backups for the specified. """
         metadata = self.run_dropbox_action(self.dropbox.metadata, self.DROPBOX_DIRECTORY)
         filepaths = [x['path'] for x in metadata['contents'] if not x['is_dir']]
+        if not raw:
+            filepaths = [os.path.splitext(x)[0] for x in filepaths]
+            filepaths = list(set(filepaths))
+
         return sorted(filepaths)
+
+    def get_numbered_path(self, path, number):
+        return "{}.{}".format(path, number)
+
+    @staticmethod
+    def chunked_file(filehandle, chunk_size=FILE_SIZE_LIMIT):
+        eof = False
+        while not eof:
+            with tempfile.SpooledTemporaryFile(max_size=MAX_SPOOLED_SIZE) as t:
+                chunk_space = chunk_size
+                while chunk_space > 0:
+                    data = filehandle.read(min(16384, chunk_space))
+                    if not data:
+                        eof = True
+                        break
+
+                    chunk_space -= len(data)
+                    t.write(data)
+
+                if t.tell() > 0:
+                    t.seek(0)
+                    yield t
 
     def write_file(self, filehandle):
         """ Write the specified file. """
         filehandle.seek(0)
-        path = os.path.join(self.DROPBOX_DIRECTORY, filehandle.name)
-        self.run_dropbox_action(self.dropbox.put_file, path, filehandle)
+        total_files = 0
+        path = os.path.join(
+            self.DROPBOX_DIRECTORY, 
+            filehandle.name,
+        )
+        for chunk in self.chunked_file(filehandle):
+            self.run_dropbox_action(
+                self.dropbox.put_file, 
+                self.get_numbered_path(path, total_files), 
+                chunk,
+            )
+            total_files += 1
 
     def read_file(self, filepath):
         """ Read the specified file and return it's handle. """
-        response = self.run_dropbox_action(self.dropbox.get_file, filepath)
-        filehandle = tempfile.SpooledTemporaryFile()
-        filehandle.write(response.read())
+        total_files = 0
+        filehandle = tempfile.SpooledTemporaryFile(max_size=MAX_SPOOLED_SIZE)
+        try:
+            while True:
+                response = self.run_dropbox_action(
+                    self.dropbox.get_file, 
+                    self.get_numbered_path(filepath, total_files),
+                    ignore_404=(total_files > 0),
+                )
+                if not response:
+                    break
+
+                copyfileobj(response, filehandle)
+                total_files += 1
+
+        except:
+            filehandle.close()
+            raise
+
         return filehandle
 
     def run_dropbox_action(self, method, *args, **kwargs):
         """ Check we have a valid 200 response from Dropbox. """
+        ignore_404 = kwargs.pop("ignore_404", False)
         try:
             response = method(*args, **kwargs)
         except ErrorResponse, e:
+            if ignore_404 and e.status == 404:
+                return None
+
             errmsg = "ERROR %s" % (e,)
             raise StorageError(errmsg)
         return response
@@ -145,7 +208,7 @@ class Storage(BaseStorage):
         """ Save the request and access tokens to disk. """
         tokendata = dict(request_token=self._request_token, access_token=self._access_token)
         with open(self.TOKENS_FILEPATH, 'wb') as tokenhandle:
-            pickle.dump(tokendata, tokenhandle)
+            pickle.dump(tokendata, tokenhandle, -1)
 
     def read_token_file(self):
         """ Reload the request and/or access tokens from disk. """

@@ -1,11 +1,15 @@
 """
 S3 Storage object.
 """
-import os, tempfile, sys
-from .base import BaseStorage, StorageError
+import os
+import tempfile
+from cStringIO import StringIO
+
+import boto
+from boto.s3.key import Key
 from django.conf import settings
-from simples3.streaming import StreamingS3Bucket
-from simples3.utils import aws_urlquote
+
+from .base import BaseStorage, StorageError
 
 
 ################################
@@ -18,13 +22,14 @@ class Storage(BaseStorage):
     S3_ACCESS_KEY = getattr(settings, 'DBBACKUP_S3_ACCESS_KEY', None)
     S3_SECRET_KEY = getattr(settings, 'DBBACKUP_S3_SECRET_KEY', None)
     S3_DOMAIN = getattr(settings, 'DBBACKUP_S3_DOMAIN', 'https://s3.amazonaws.com/')
-    S3_DIRECTORY =  getattr(settings, 'DBBACKUP_S3_DIRECTORY', "django-dbbackups/")
+    S3_DIRECTORY = getattr(settings, 'DBBACKUP_S3_DIRECTORY', "django-dbbackups/")
     S3_DIRECTORY = '%s/' % S3_DIRECTORY.strip('/')
 
     def __init__(self, server_name=None):
         self._check_filesystem_errors()
         self.name = 'AmazonS3'
-        self.baseurl = self.S3_DOMAIN + aws_urlquote(self.S3_BUCKET)
+        self.conn = boto.connect_s3(self.S3_ACCESS_KEY, self.S3_SECRET_KEY)
+        self.bucket = self.conn.get_bucket(self.S3_BUCKET)
         BaseStorage.__init__(self)
 
     def _check_filesystem_errors(self):
@@ -42,28 +47,56 @@ class Storage(BaseStorage):
 
     @property
     def bucket(self):
-        return StreamingS3Bucket(self.S3_BUCKET, self.S3_ACCESS_KEY,
-            self.S3_SECRET_KEY, base_url=self.baseurl)
+        return self.bucket
 
     def backup_dir(self):
         return self.S3_DIRECTORY
 
     def delete_file(self, filepath):
         """ Delete the specified filepath. """
-        del self.bucket[filepath]
+        self.bucket.delete_key(filepath)
 
     def list_directory(self):
         """ List all stored backups for the specified. """
-        return [x[0] for x in self.bucket.listdir(self.S3_DIRECTORY)]
+        return [k.name for k in
+                self.bucket.get_all_keys(prefix=self.S3_DIRECTORY)]
 
     def write_file(self, filehandle):
-        """ Write the specified file. """
+        """ Write the specified file.
+            Use multipart upload because normal upload maximum is 5 GB.
+        """
         filepath = os.path.join(self.S3_DIRECTORY, filehandle.name)
-        self.bucket.put_file(filepath, filehandle)
+
+        filehandle.seek(0)
+
+        mp = self.bucket.initiate_multipart_upload(filepath)
+
+        try:
+            part_index = 1
+            while True:
+                buffer = filehandle.read(5 * 1024 * 1024)
+
+                if not buffer:
+                    break
+                else:
+                    string_file = StringIO(buffer)
+                    try:
+                        string_file.seek(0)
+                        mp.upload_part_from_file(string_file, part_index)
+                    finally:
+                        string_file.close()
+
+                    part_index += 1
+
+            mp.complete_upload()
+        except:
+            mp.cancel_upload()
+            raise
 
     def read_file(self, filepath):
         """ Read the specified file and return it's handle. """
-        response = self.bucket.get(filepath)
-        filehandle = tempfile.SpooledTemporaryFile()
-        filehandle.write(response.read())
+        key = Key(self.bucket)
+        key.key = filepath
+        filehandle = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
+        key.get_contents_to_file(filehandle)
         return filehandle

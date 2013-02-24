@@ -20,7 +20,7 @@ DBBackup  - Backup your database to the specified storage. By default this
             will backup all databases specified in your settings.py file and
             will not delete any old backups. You can optionally specify a
             server name to be included in the backup filename.
-            >> dbbackup [-s <servername>] [-d <database>] [--clean]
+            >> dbbackup [-s <servername>] [-d <database>] [--clean] [--compress] [--encrypt]
 
 DBRestore - Restore your database from the specified storage. By default this
             will lookup the latest backup and restore from that. You may
@@ -29,6 +29,9 @@ DBRestore - Restore your database from the specified storage. By default this
             also specify an explicit local file to backup from.
             >> dbrestore [-d <database>] [-s <servername>] [-f <localfile>]
 
+backup_media - Backup media files. Default this will backup the files in the MEDIA_ROOT.
+               Optionally you can set the DBBACKUP_MEDIA_PATH setting.
+               >> backup_media [--encrypt] [--clean] [--servername <servername>]
 
 
 =======================
@@ -329,3 +332,27 @@ DBBACKUP_FILENAME_TEMPLATE (optional)
     time of day, week, or month.  For example, if you want to take advantage of
     Amazon S3's automatic expiry feature, you need to prefix your backups
     differently based on when you want them to expire.
+
+DBBACKUP_CLEANUP_KEEP (optional)
+    The number of backups to keep when specifying the --clean flag. Defaults to
+    keeping 10 + the first backup of each month.
+
+DBBACKUP_GPG_RECIPIENT (optional)
+    The name of the key that is used for encryption. This setting is only used when making a backup with the --encrypt opton.
+
+DBBACKUP_MEDIA_PATH (optional)
+    The path that will be backed up by the 'backup_media' command. If this option is not set, then the MEDIA_ROOT setting is used.
+
+
+============
+ ENCRYPTION
+============
+
+You can encrypt a backup with the --encrypt option. The backup is done using gpg.
+    >> python manage.py dbbackup --encrypt
+
+Requirements:
+- Install the python package 'python-gnupg'
+    >> pip install python-gnupg
+- You need gpg key.
+- Set the setting 'DBBACKUP_GPG_RECIPIENT' to the name of the gpg key.
