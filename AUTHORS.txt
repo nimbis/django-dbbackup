@@ -2,5 +2,9 @@ Primary Authors:
   * Michael Shepanski
 
 Contributors:
+  * Joe Hu
+  * Nathan Duthoit
+  * Rich Leland
+  * Rismabra (Bitbucket)
   * Toumhi (Bitbucket)
   * Tobias McNulty
