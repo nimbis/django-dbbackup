@@ -4,8 +4,8 @@ Primary Authors:
 Contributors:
   * Hannes Hapke
   * Joe Hu
+  * Marco Braak
   * Nathan Duthoit
   * Rich Leland
-  * Rismabra (Bitbucket)
   * Toumhi (Bitbucket)
   * Tobias McNulty
