@@ -148,14 +148,21 @@ class PostgreSQLSettings(BaseEngineSettings):
 #  Sqlite Settings
 ##################################
 
-class SQLITE_SETTINGS:
-    EXTENSION = getattr(settings, 'DBBACKUP_SQLITE_EXTENSION', 'sqlite')
-    BACKUP_COMMANDS = getattr(settings, 'DBBACKUP_SQLITE_BACKUP_COMMANDS', [
-        [READ_FILE, '{databasename}'],
-    ])
-    RESTORE_COMMANDS = getattr(settings, 'DBBACKUP_SQLITE_RESTORE_COMMANDS', [
-        [WRITE_FILE, '{databasename}'],
-    ])
+class SQLiteSettings(BaseEngineSettings):
+    """Settings for the SQLite database engine"""
+
+    def get_extension(self):
+        return getattr(settings, 'DBBACKUP_SQLITE_EXTENSION', 'sqlite')
+
+    def get_backup_commands(self):
+        return getattr(settings, 'DBBACKUP_SQLITE_BACKUP_COMMANDS', [
+            [READ_FILE, '{databasename}'],
+        ])
+
+    def get_restore_commands(self):
+        return getattr(settings, 'DBBACKUP_SQLITE_RESTORE_COMMANDS', [
+            [WRITE_FILE, '{databasename}'],
+        ])
 
 
 ##################################
@@ -177,7 +184,7 @@ class DBCommands:
         elif self.engine in ('postgresql_psycopg2', 'postgis'):
             return PostgreSQLSettings(self.database)
         elif self.engine == 'sqlite3':
-            return SQLITE_SETTINGS(self.database)
+            return SQLiteSettings(self.database)
 
     def filename(self, servername=None, wildcard=None):
         """ Create a new backup filename. """
