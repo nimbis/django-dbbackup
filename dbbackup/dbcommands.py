@@ -1,12 +1,16 @@
 """
 Process the Backup or Restore commands.
 """
-import copy, os, re, shlex
+import copy
+import os
+import re
+import shlex
 from datetime import datetime
+from shutil import copyfileobj
+from subprocess import Popen
+
 from django.conf import settings
 from django.core.management.base import CommandError
-from subprocess import Popen
-from shutil import copyfileobj
 
 
 READ_FILE = '<READ_FILE>'
@@ -186,9 +190,12 @@ class DBCommands:
         """ Translate and run the specified commands. """
         for command in commands:
             command = self.translate_command(command)
-            if (command[0] == READ_FILE): self.read_file(command[1], stdout)
-            elif (command[0] == WRITE_FILE): self.write_file(command[1], stdin)
-            else: self.run_command(command, stdin, stdout)
+            if (command[0] == READ_FILE):
+                self.read_file(command[1], stdout)
+            elif (command[0] == WRITE_FILE):
+                self.write_file(command[1], stdin)
+            else:
+                self.run_command(command, stdin, stdout)
 
     def run_command(self, command, stdin=None, stdout=None):
         """ Run the specified command. """
@@ -214,4 +221,3 @@ class DBCommands:
         print "  Writing: %s" % filepath
         with open(filepath, 'wb') as f:
             copyfileobj(stdin, f)
-
