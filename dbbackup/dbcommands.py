@@ -88,16 +88,60 @@ class MySQLSettings(BaseEngineSettings):
 #  PostgreSQL Settings
 ##################################
 
-class POSTGRESQL_SETTINGS:
-    EXTENSION = getattr(settings, 'DBBACKUP_POSTGRESQL_EXTENSION', 'psql')
-    BACKUP_COMMANDS = getattr(settings, 'DBBACKUP_POSTGRESQL_BACKUP_COMMANDS', [
-        shlex.split('pg_dump -p {port} -U {adminuser} {databasename} >'),
-    ])
-    RESTORE_COMMANDS = getattr(settings, 'DBBACKUP_POSTGRESQL_RESTORE_COMMANDS', [
-        shlex.split('dropdb -p {port} -U {adminuser} {databasename}'),
-        shlex.split('createdb -p {port} -U {adminuser} {databasename} --owner={username}'),
-        shlex.split('psql -p {port} -U {adminuser} -1 {databasename} <'),
-    ])
+class PostgreSQLSettings(BaseEngineSettings):
+    """Settings for the PostgreSQL database engine"""
+
+    def get_extension(self):
+        return getattr(settings, 'DBBACKUP_POSTGRESQL_EXTENSION', 'psql')
+
+    def get_backup_commands(self):
+        backup_commands = getattr(settings, 'DBBACKUP_POSTGRESQL_BACKUP_COMMANDS', None)
+        if not backup_commands:
+            command = 'pg_dump --username={adminuser}'
+            if self.database_host:
+                command = '%s --host={host}' % command
+            if self.database_port:
+                command = '%s --port={port}' % command
+            command = '%s {databasename} >' % command
+            backup_commands = [shlex.split(command)]
+        return backup_commands
+
+    def get_restore_commands(self):
+        restore_commands = getattr(settings, 'DBBACKUP_POSTGRESQL_RESTORE_COMMANDS', None)
+        if not restore_commands:
+            restore_commands = [
+                shlex.split(self.dropdb_command()),
+                shlex.split(self.createdb_command()),
+                shlex.split(self.import_command())
+            ]
+        return restore_commands
+
+    def dropdb_command(self):
+        """Constructs the PostgreSQL dropdb command"""
+        command = 'dropdb --username={adminuser}'
+        if self.database_host:
+            command = '%s --host={host}' % command
+        if self.database_port:
+            command = '%s --port={port}' % command
+        return '%s {databasename}' % command
+
+    def createdb_command(self):
+        """Constructs the PostgreSQL createdb command"""
+        command = 'createdb --username={adminuser} --owner={username}'
+        if self.database_host:
+            command = '%s --host={host}' % command
+        if self.database_port:
+            command = '%s --port={port}' % command
+        return '%s {databasename}' % command
+
+    def import_command(self):
+        """Constructs the PostgreSQL db import command"""
+        command = 'psql --username={adminuser} --owner={username}'
+        if self.database_host:
+            command = '%s --host={host}' % command
+        if self.database_port:
+            command = '%s --port={port}' % command
+        return '%s --single-transaction {databasename} <' % command
 
 
 ##################################
@@ -131,7 +175,7 @@ class DBCommands:
         if self.engine == 'mysql':
             return MySQLSettings(self.database)
         elif self.engine in ('postgresql_psycopg2', 'postgis'):
-            return POSTGRESQL_SETTINGS(self.database)
+            return PostgreSQLSettings(self.database)
         elif self.engine == 'sqlite3':
             return SQLITE_SETTINGS(self.database)
 
