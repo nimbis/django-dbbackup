@@ -225,45 +225,45 @@ you might consider fully customizing the admin commands.
 MYSQL
 -----
 DBBACKUP_MYSQL_EXTENSION (optional)
-    Entension to use for a mysql backup. By default this is 'mysql'.
+    Extension to use for a mysql backup. By default this is 'mysql'.
 
 DBBACKUP_MYSQL_BACKUP_COMMANDS (optional)
     List of commands to use execute when creating a backup. Commands are sent
     to popen and should be split into shlex tokens. By default, the following
     command is run:
-    >> mysqldump -u{adminuser} -p{password} {databasename} >
+    >> mysqldump --user={adminuser} --password={password} --host={host} --port={port} {databasename} >
 
 DBBACKUP_MYSQL_RESTORE_COMMANDS (optional)
     List of commands to use execute when creating a backup. Commands are sent
     to popen and should be split into shlex tokens. By default, the following
     command is run:
-    >> mysql -u{adminuser} -p{password} {databasename} <
+    >> mysql --user={adminuser} --password={password} --host={host} --port={port} {databasename} <
 
 
 POSTGRES
 --------
 DBBACKUP_POSTGRES_EXTENSION (optional)
-    Entension to use for a postgres backup. By default this is 'psql'.
+    Extension to use for a postgres backup. By default this is 'psql'.
 
 DBBACKUP_POSTGRES_BACKUP_COMMANDS (optional)
     List of commands to use execute when creating a backup. Commands are sent
     to popen and should be split into shlex tokens. By default, the following
     command is run:
-    >> pg_dump -p {port} -U {adminuser} {databasename} >
+    >> pg_dump --username={adminuser} --host={host} --port={port} {databasename} >
 
 DBBACKUP_POSTGRES_RESTORE_COMMANDS (optional)
     List of commands to use execute when restoring a backup. Commands are sent
     to popen and should be split into shlex tokens. By default, the following
     commands are run:
-    >> dropdb -p {port} -U {adminuser} {databasename}
-    >> createdb -p {port} -U {adminuser} {databasename} --owner={username}
-    >> psql -p {port} -U {adminuser} -1 {databasename} <
+    >> dropdb --username={adminuser} --host={host} --port={port} {databasename}
+    >> createdb --username={adminuser} --host={host} --port={port} --owner={username} {databasename}
+    >> psql --username={adminuser} --host={host} --port={port} --single-transaction {databasename} <
 
 
 SQLITE
 ------
 DBBACKUP_SQLITE_EXTENSION (optional)
-    Entension to use for an sqlite backup. By default this is 'sqlite'.
+    Extension to use for an sqlite backup. By default this is 'sqlite'.
 
 DBBACKUP_SQLITE_BACKUP_COMMANDS (optional)
     List of commands to use execute when creating a backup. Commands are sent to
