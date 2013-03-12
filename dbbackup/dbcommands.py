@@ -62,11 +62,11 @@ class MySQLSettings(BaseEngineSettings):
     def get_backup_commands(self):
         backup_commands = getattr(settings, 'DBBACKUP_MYSQL_BACKUP_COMMANDS', None)
         if not backup_commands:
-            command = 'mysqldump -u{adminuser} -p{password}'
+            command = 'mysqldump --user={adminuser} --password={password}'
             if self.database_host:
-                command = '%s -h{host}' % command
+                command = '%s --host={host}' % command
             if self.database_port:
-                command = '%s -P{port}' % command
+                command = '%s --port={port}' % command
             command = '%s {databasename} >' % command
             backup_commands = [shlex.split(command)]
         return backup_commands
@@ -74,11 +74,11 @@ class MySQLSettings(BaseEngineSettings):
     def get_restore_commands(self):
         restore_commands = getattr(settings, 'DBBACKUP_MYSQL_RESTORE_COMMANDS', None)
         if not restore_commands:
-            command = 'mysql -u{adminuser} -p{password}'
+            command = 'mysql --user={adminuser} --password={password}'
             if self.database_host:
-                command = '%s -h{host}' % command
+                command = '%s --host={host}' % command
             if self.database_port:
-                command = '%s -P{port}' % command
+                command = '%s --port={port}' % command
             command = '%s {databasename} <' % command
             restore_commands = [shlex.split(command)]
         return restore_commands
