@@ -136,7 +136,7 @@ class PostgreSQLSettings(BaseEngineSettings):
 
     def import_command(self):
         """Constructs the PostgreSQL db import command"""
-        command = 'psql --username={adminuser} --owner={username}'
+        command = 'psql --username={adminuser}'
         if self.database_host:
             command = '%s --host={host}' % command
         if self.database_port:
