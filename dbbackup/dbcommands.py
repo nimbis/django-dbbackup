@@ -33,8 +33,8 @@ class BaseEngineSettings:
         self.database_user = self.database['USER']
         self.database_password = self.database['PASSWORD']
         self.database_name = self.database['NAME']
-        self.database_host = getattr(self.database, 'HOST', '')
-        self.database_port = str(getattr(self.database, 'PORT', ''))
+        self.database_host = self.database.get('HOST', '')
+        self.database_port = str(self.database.get('PORT', ''))
         self.EXTENSION = self.get_extension()
         self.BACKUP_COMMANDS = self.get_backup_commands()
         self.RESTORE_COMMANDS = self.get_restore_commands()
