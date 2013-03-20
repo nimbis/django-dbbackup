@@ -22,7 +22,7 @@ for dirpath, dirnames, filenames in os.walk(package_dir):
 
 setup(
     name='django-dbbackup',
-    version='1.80.0',
+    version='1.80.1',
     description='Management commands to help backup and restore a project database to AmazonS3, Dropbox or local disk.',
     long_description=read('README.txt'),
     author='Michael Shepanski',
