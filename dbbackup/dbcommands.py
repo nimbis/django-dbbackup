@@ -186,6 +186,9 @@ class DBCommands:
         elif self.engine == 'sqlite3':
             return SQLiteSettings(self.database)
 
+    def _clean_passwd(self, instr):
+        return instr.replace(self.database['PASSWORD'], '******')
+
     def filename(self, servername=None, wildcard=None):
         """ Create a new backup filename. """
         params = {
@@ -254,7 +257,7 @@ class DBCommands:
         pstdin = stdin if command[-1] == '<' else None
         pstdout = stdout if command[-1] == '>' else devnull
         command = filter(lambda arg: arg not in ['<', '>'], command)
-        print "  Running: %s" % ' '.join(command)
+        print self._clean_passwd("  Running: %s" % ' '.join(command))
         process = Popen(command, stdin=pstdin, stdout=pstdout)
         process.wait()
         devnull.close()
