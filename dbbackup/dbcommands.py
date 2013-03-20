@@ -1,12 +1,16 @@
 """
 Process the Backup or Restore commands.
 """
-import copy, os, re, shlex
+import copy
+import os
+import re
+import shlex
 from datetime import datetime
+from shutil import copyfileobj
+from subprocess import Popen
+
 from django.conf import settings
 from django.core.management.base import CommandError
-from subprocess import Popen
-from shutil import copyfileobj
 
 
 READ_FILE = '<READ_FILE>'
@@ -17,47 +21,148 @@ FILENAME_TEMPLATE = getattr(settings, 'DBBACKUP_FILENAME_TEMPLATE', '{databasena
 
 
 ##################################
+#  Base Engine Settings
+##################################
+
+class BaseEngineSettings:
+    """Base settings for a database engine"""
+
+    def __init__(self, database):
+        self.database = database
+        self.database_adminuser = self.database.get('ADMINUSER', self.database['USER'])
+        self.database_user = self.database['USER']
+        self.database_password = self.database['PASSWORD']
+        self.database_name = self.database['NAME']
+        self.database_host = self.database.get('HOST', '')
+        self.database_port = str(self.database.get('PORT', ''))
+        self.EXTENSION = self.get_extension()
+        self.BACKUP_COMMANDS = self.get_backup_commands()
+        self.RESTORE_COMMANDS = self.get_restore_commands()
+
+    def get_extension(self):
+        raise NotImplementedError("Subclasses must implement get_extensions")
+
+    def get_backup_commands(self):
+        raise NotImplementedError("Subclasses must implement get_backup_commands")
+
+    def get_restore_commands(self):
+        raise NotImplementedError("Subclasses must implement get_restore_commands")
+
+
+##################################
 #  MySQL Settings
 ##################################
 
-class MYSQL_SETTINGS:
-    EXTENSION = getattr(settings, 'DBBACKUP_MYSQL_EXTENSION', 'mysql')
-    BACKUP_COMMANDS = getattr(settings, 'DBBACKUP_MYSQL_BACKUP_COMMANDS', [
-        shlex.split('mysqldump -u{adminuser} -p{password} {databasename} >'),
-    ])
-    RESTORE_COMMANDS = getattr(settings, 'DBBACKUP_MYSQL_RESTORE_COMMANDS', [
-        shlex.split('mysql -u{adminuser} -p{password} {databasename} <'),
-    ])
+class MySQLSettings(BaseEngineSettings):
+    """Settings for the MySQL database engine"""
+
+    def get_extension(self):
+        return getattr(settings, 'DBBACKUP_MYSQL_EXTENSION', 'mysql')
+
+    def get_backup_commands(self):
+        backup_commands = getattr(settings, 'DBBACKUP_MYSQL_BACKUP_COMMANDS', None)
+        if not backup_commands:
+            command = 'mysqldump --user={adminuser} --password={password}'
+            if self.database_host:
+                command = '%s --host={host}' % command
+            if self.database_port:
+                command = '%s --port={port}' % command
+            command = '%s {databasename} >' % command
+            backup_commands = [shlex.split(command)]
+        return backup_commands
+
+    def get_restore_commands(self):
+        restore_commands = getattr(settings, 'DBBACKUP_MYSQL_RESTORE_COMMANDS', None)
+        if not restore_commands:
+            command = 'mysql --user={adminuser} --password={password}'
+            if self.database_host:
+                command = '%s --host={host}' % command
+            if self.database_port:
+                command = '%s --port={port}' % command
+            command = '%s {databasename} <' % command
+            restore_commands = [shlex.split(command)]
+        return restore_commands
 
 
 ##################################
 #  PostgreSQL Settings
 ##################################
 
-class POSTGRESQL_SETTINGS:
-    EXTENSION = getattr(settings, 'DBBACKUP_POSTGRESQL_EXTENSION', 'psql')
-    BACKUP_COMMANDS = getattr(settings, 'DBBACKUP_POSTGRESQL_BACKUP_COMMANDS', [
-        shlex.split('pg_dump -p {port} -U {adminuser} {databasename} >'),
-    ])
-    RESTORE_COMMANDS = getattr(settings, 'DBBACKUP_POSTGRESQL_RESTORE_COMMANDS', [
-        shlex.split('dropdb -p {port} -U {adminuser} {databasename}'),
-        shlex.split('createdb -p {port} -U {adminuser} {databasename} --owner={username}'),
-        shlex.split('psql -p {port} -U {adminuser} -1 {databasename} <'),
-    ])
+class PostgreSQLSettings(BaseEngineSettings):
+    """Settings for the PostgreSQL database engine"""
+
+    def get_extension(self):
+        return getattr(settings, 'DBBACKUP_POSTGRESQL_EXTENSION', 'psql')
+
+    def get_backup_commands(self):
+        backup_commands = getattr(settings, 'DBBACKUP_POSTGRESQL_BACKUP_COMMANDS', None)
+        if not backup_commands:
+            command = 'pg_dump --username={adminuser}'
+            if self.database_host:
+                command = '%s --host={host}' % command
+            if self.database_port:
+                command = '%s --port={port}' % command
+            command = '%s {databasename} >' % command
+            backup_commands = [shlex.split(command)]
+        return backup_commands
+
+    def get_restore_commands(self):
+        restore_commands = getattr(settings, 'DBBACKUP_POSTGRESQL_RESTORE_COMMANDS', None)
+        if not restore_commands:
+            restore_commands = [
+                shlex.split(self.dropdb_command()),
+                shlex.split(self.createdb_command()),
+                shlex.split(self.import_command())
+            ]
+        return restore_commands
+
+    def dropdb_command(self):
+        """Constructs the PostgreSQL dropdb command"""
+        command = 'dropdb --username={adminuser}'
+        if self.database_host:
+            command = '%s --host={host}' % command
+        if self.database_port:
+            command = '%s --port={port}' % command
+        return '%s {databasename}' % command
+
+    def createdb_command(self):
+        """Constructs the PostgreSQL createdb command"""
+        command = 'createdb --username={adminuser} --owner={username}'
+        if self.database_host:
+            command = '%s --host={host}' % command
+        if self.database_port:
+            command = '%s --port={port}' % command
+        return '%s {databasename}' % command
+
+    def import_command(self):
+        """Constructs the PostgreSQL db import command"""
+        command = 'psql --username={adminuser}'
+        if self.database_host:
+            command = '%s --host={host}' % command
+        if self.database_port:
+            command = '%s --port={port}' % command
+        return '%s --single-transaction {databasename} <' % command
 
 
 ##################################
 #  Sqlite Settings
 ##################################
 
-class SQLITE_SETTINGS:
-    EXTENSION = getattr(settings, 'DBBACKUP_SQLITE_EXTENSION', 'sqlite')
-    BACKUP_COMMANDS = getattr(settings, 'DBBACKUP_SQLITE_BACKUP_COMMANDS', [
-        [READ_FILE, '{databasename}'],
-    ])
-    RESTORE_COMMANDS = getattr(settings, 'DBBACKUP_SQLITE_RESTORE_COMMANDS', [
-        [WRITE_FILE, '{databasename}'],
-    ])
+class SQLiteSettings(BaseEngineSettings):
+    """Settings for the SQLite database engine"""
+
+    def get_extension(self):
+        return getattr(settings, 'DBBACKUP_SQLITE_EXTENSION', 'sqlite')
+
+    def get_backup_commands(self):
+        return getattr(settings, 'DBBACKUP_SQLITE_BACKUP_COMMANDS', [
+            [READ_FILE, '{databasename}'],
+        ])
+
+    def get_restore_commands(self):
+        return getattr(settings, 'DBBACKUP_SQLITE_RESTORE_COMMANDS', [
+            [WRITE_FILE, '{databasename}'],
+        ])
 
 
 ##################################
@@ -74,9 +179,12 @@ class DBCommands:
 
     def _get_settings(self):
         """ Returns the proper settings dictionary. """
-        if self.engine == 'mysql': return MYSQL_SETTINGS
-        elif self.engine in ('postgresql_psycopg2', 'postgis',): return POSTGRESQL_SETTINGS
-        elif self.engine == 'sqlite3': return SQLITE_SETTINGS
+        if self.engine == 'mysql':
+            return MySQLSettings(self.database)
+        elif self.engine in ('postgresql_psycopg2', 'postgis'):
+            return PostgreSQLSettings(self.database)
+        elif self.engine == 'sqlite3':
+            return SQLiteSettings(self.database)
 
     def filename(self, servername=None, wildcard=None):
         """ Create a new backup filename. """
@@ -116,6 +224,7 @@ class DBCommands:
             command[i] = command[i].replace('{username}', self.database['USER'])
             command[i] = command[i].replace('{password}', self.database['PASSWORD'])
             command[i] = command[i].replace('{databasename}', self.database['NAME'])
+            command[i] = command[i].replace('{host}', self.database['HOST'])
             command[i] = command[i].replace('{port}', str(self.database['PORT']))
         return command
 
@@ -132,9 +241,12 @@ class DBCommands:
         """ Translate and run the specified commands. """
         for command in commands:
             command = self.translate_command(command)
-            if (command[0] == READ_FILE): self.read_file(command[1], stdout)
-            elif (command[0] == WRITE_FILE): self.write_file(command[1], stdin)
-            else: self.run_command(command, stdin, stdout)
+            if (command[0] == READ_FILE):
+                self.read_file(command[1], stdout)
+            elif (command[0] == WRITE_FILE):
+                self.write_file(command[1], stdin)
+            else:
+                self.run_command(command, stdin, stdout)
 
     def run_command(self, command, stdin=None, stdout=None):
         """ Run the specified command. """
@@ -160,4 +272,3 @@ class DBCommands:
         print "  Writing: %s" % filepath
         with open(filepath, 'wb') as f:
             copyfileobj(stdin, f)
-
