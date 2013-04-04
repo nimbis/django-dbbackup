@@ -86,7 +86,7 @@ class Command(BaseCommand):
             os.rmdir(temp_dir)
 
     def get_source_dir(self):
-        return getattr(settings, 'DBBACKUP_MEDIA_PATH') or settings.MEDIA_ROOT
+        return getattr(settings, 'DBBACKUP_MEDIA_PATH', settings.MEDIA_ROOT)
 
     def cleanup_old_backups(self):
         """ Cleanup old backups, keeping the number of backups specified by
