@@ -94,7 +94,8 @@ def encrypt_file(input_file):
             input_file.close()
 
             if not result:
-                raise Exception('Encryption failed; status: %s' % result.status)
+                raise Exception('Encryption failed; status: %s.'
+                                'stderr: %s.' % result.status, result.stderr)
 
             return create_spooled_temporary_file(temp_filename, input_file.name + '.gpg')
         finally:
