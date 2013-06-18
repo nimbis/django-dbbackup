@@ -90,16 +90,6 @@ DBBACKUP_S3_IS_SECURE (optional)
     Should the S3 connection use SSL? Default is True
 
 
-COMMON ERRORS
--------------
-ImportError: No module named streaming using AmazonS3
-    This is caused by an installation issue installing simples3-1.0-alpha via
-    PyPI. If you force pip to install version 1.0 (rather than 1.0-alpha) the
-    issue should go away.
-    >> pip install simples3==1.0
-
-
-
 =====================
  DBBackup to Dropbox
 =====================
