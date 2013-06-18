@@ -111,6 +111,9 @@ class Command(LabelCommand):
 
         temp_dir = tempfile.mkdtemp()
         try:
+            # Workaround for
+            # https://bitbucket.org/mjs7231/django-dbbackup/issue/21/
+            inputfile.fileno()
             new_basename = os.path.basename(inputfile.name).replace('.gpg', '')
             temp_filename = os.path.join(temp_dir, new_basename)
             try:
