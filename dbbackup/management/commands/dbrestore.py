@@ -120,7 +120,13 @@ class Command(LabelCommand):
                 inputfile.seek(0)
 
                 g = gnupg.GPG()
-                result = g.decrypt_file(file=inputfile, passphrase=get_passphrase(), output=temp_filename)
+                try:
+                    passphrase = os.environ['GPG_PASSPHRASE']
+                except:
+                    passphrase=get_passphrase()
+
+
+                result = g.decrypt_file(file=inputfile, passphrase=passphrase, output=temp_filename)
 
                 if not result:
                     raise Exception('Decryption failed; status: %s' % result.status)
