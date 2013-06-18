@@ -90,7 +90,10 @@ def encrypt_file(input_file):
             input_file.seek(0)
 
             g = gnupg.GPG()
-            result = g.encrypt_file(input_file, output=temp_filename, recipients=settings.DBBACKUP_GPG_RECIPIENT)
+            result = g.encrypt_file(input_file,
+                                    output=temp_filename,
+                                    always_trust=True,
+                                    recipients=settings.DBBACKUP_GPG_RECIPIENT)
             input_file.close()
 
             if not result:
