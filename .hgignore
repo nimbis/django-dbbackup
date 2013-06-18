@@ -3,6 +3,7 @@ syntax: glob
 *.db
 *.log
 *.egg-info
+.idea
 compressed.r*.js
 static/cache/*
 dist/*

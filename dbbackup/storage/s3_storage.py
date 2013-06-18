@@ -7,6 +7,8 @@ from cStringIO import StringIO
 
 import boto
 from boto.s3.key import Key
+from boto.s3.connection import S3Connection
+
 from django.conf import settings
 
 from .base import BaseStorage, StorageError
@@ -21,14 +23,18 @@ class Storage(BaseStorage):
     S3_BUCKET = getattr(settings, 'DBBACKUP_S3_BUCKET', None)
     S3_ACCESS_KEY = getattr(settings, 'DBBACKUP_S3_ACCESS_KEY', None)
     S3_SECRET_KEY = getattr(settings, 'DBBACKUP_S3_SECRET_KEY', None)
-    S3_DOMAIN = getattr(settings, 'DBBACKUP_S3_DOMAIN', 'https://s3.amazonaws.com/')
+    S3_DOMAIN = getattr(settings, 'DBBACKUP_S3_DOMAIN', 's3.amazonaws.com')
+    S3_IS_SECURE = getattr(settings, 'DBBACKUP_S3_USE_SSL', True)
     S3_DIRECTORY = getattr(settings, 'DBBACKUP_S3_DIRECTORY', "django-dbbackups/")
     S3_DIRECTORY = '%s/' % S3_DIRECTORY.strip('/')
 
     def __init__(self, server_name=None):
         self._check_filesystem_errors()
         self.name = 'AmazonS3'
-        self.conn = boto.connect_s3(self.S3_ACCESS_KEY, self.S3_SECRET_KEY)
+        self.conn = S3Connection(aws_access_key_id=self.S3_ACCESS_KEY,
+                                 aws_secret_access_key=self.S3_SECRET_KEY,
+                                 host=self.S3_DOMAIN,
+                                 is_secure=self.S3_IS_SECURE)
         self.bucket = self.conn.get_bucket(self.S3_BUCKET)
         BaseStorage.__init__(self)
 
