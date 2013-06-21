@@ -83,18 +83,11 @@ DBBACKUP_S3_DIRECTORY (optional)
 DBBACKUP_S3_DOMAIN (optional)
     Optionally specify the Amazon domain to use when transferring the
     generated backup files. For example, this can be set to
-    http://s3-eu-west-1.amazonaws.com/. By default, this is
-    'https://s3.amazonaws.com/'.
+    's3-eu-west-1.amazonaws.com'. By default, this is
+    's3.amazonaws.com'.
 
-
-COMMON ERRORS
--------------
-ImportError: No module named streaming using AmazonS3
-    This is caused by an installation issue installing simples3-1.0-alpha via
-    PyPI. If you force pip to install version 1.0 (rather than 1.0-alpha) the
-    issue should go away.
-    >> pip install simples3==1.0
-
+DBBACKUP_S3_IS_SECURE (optional)
+    Should the S3 connection use SSL? Default is True
 
 
 =====================

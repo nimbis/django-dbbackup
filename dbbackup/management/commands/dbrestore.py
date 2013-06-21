@@ -65,18 +65,15 @@ class Command(LabelCommand):
         print "  Restoring: %s" % self.filepath
         input_filename = self.filepath
         inputfile = self.storage.read_file(input_filename)
-
         if self.get_extension(input_filename) == '.gpg':
             unencrypted_file = self.unencrypt_file(inputfile)
             inputfile.close()
             inputfile = unencrypted_file
             input_filename = inputfile.name
-
         if self.get_extension(input_filename) == '.gz':
             uncompressed_file = self.uncompress_file(inputfile)
             inputfile.close()
             inputfile = uncompressed_file
-
         print "  Restore tempfile created: %s" % utils.handle_size(inputfile)
         self.dbcommands.run_restore_commands(inputfile)
 
@@ -85,40 +82,30 @@ class Command(LabelCommand):
         return extension
 
     def uncompress_file(self, inputfile):
-        """ Uncompress this file using gzip.
-        The input and the output are filelike objects.
-        """
+        """ Uncompress this file using gzip. The input and the output are filelike objects. """
         outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
-
         zipfile = gzip.GzipFile(fileobj=inputfile, mode="rb")
         try:
             inputfile.seek(0)
             outputfile.write(zipfile.read())
         finally:
             zipfile.close()
-
         return outputfile
 
     def unencrypt_file(self, inputfile):
-        """ Unencrypt this file using gpg.
-        The input and the output are filelike objects.
-        """
-        def get_passphrase():
-            print 'input passphrase:'
-            return raw_input()
-
+        """ Unencrypt this file using gpg. The input and the output are filelike objects. """
         import gnupg
+        def get_passphrase():
+            print 'Input Passphrase: '
+            return raw_input()
 
         temp_dir = tempfile.mkdtemp()
         try:
-            # Workaround for
-            # https://bitbucket.org/mjs7231/django-dbbackup/issue/21/
-            inputfile.fileno()
+            inputfile.fileno()   # Convert inputfile from SpooledTemporaryFile to regular file (Fixes Issue #21)
             new_basename = os.path.basename(inputfile.name).replace('.gpg', '')
             temp_filename = os.path.join(temp_dir, new_basename)
             try:
                 inputfile.seek(0)
-
                 g = gnupg.GPG()
                 try:
                     passphrase = os.environ['GPG_PASSPHRASE']
@@ -130,10 +117,8 @@ class Command(LabelCommand):
 
                 if not result:
                     raise Exception('Decryption failed; status: %s' % result.status)
-
                 outputfile = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)
                 outputfile.name = new_basename
-
                 f = open(temp_filename)
                 try:
                     outputfile.write(f.read())
@@ -144,5 +129,4 @@ class Command(LabelCommand):
                     os.remove(temp_filename)
         finally:
             os.rmdir(temp_dir)
-
         return outputfile
