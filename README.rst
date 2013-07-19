@@ -19,19 +19,22 @@ MANAGEMENT COMMANDS
 DBBackup  - Backup your database to the specified storage. By default this
             will backup all databases specified in your settings.py file and
             will not delete any old backups. You can optionally specify a
-            server name to be included in the backup filename.
-            >> dbbackup [-s <servername>] [-d <database>] [--clean] [--compress] [--encrypt]
+            server name to be included in the backup filename::
+
+            $ dbbackup [-s <servername>] [-d <database>] [--clean] [--compress] [--encrypt]
 
 DBRestore - Restore your database from the specified storage. By default this
             will lookup the latest backup and restore from that. You may
             optionally specify a servername if you you want to backup a
             database image that was created from a different server. You may
-            also specify an explicit local file to backup from.
-            >> dbrestore [-d <database>] [-s <servername>] [-f <localfile>]
+            also specify an explicit local file to backup from::
 
-backup_media - Backup media files. Default this will backup the files in the MEDIA_ROOT.
-               Optionally you can set the DBBACKUP_MEDIA_PATH setting.
-               >> backup_media [--encrypt] [--clean] [--servername <servername>]
+            $ dbrestore [-d <database>] [-s <servername>] [-f <localfile>]
+
+backup_media - Backup media files. Default this will backup the files in the ``MEDIA_ROOT``.
+               Optionally you can set the ``DBBACKUP_MEDIA_PATH`` setting::
+
+               $ backup_media [--encrypt] [--clean] [--servername <servername>]
 
 
 =======================
@@ -45,48 +48,51 @@ you can follow the required setup below.
 
 SETUP YOUR DJANGO PROJECT
 -------------------------
-1. Install django-dbbackup and the required simples3 dependancy:
-   >> cd django-dbbackup
-   >> python setup.py install
-   >> pip install simples3
+1. Install django-dbbackup and the required simples3 dependency::
 
-2. Add 'dbbackup' to INSTALLED_APPS in your settings.py file.
+   $ cd django-dbbackup
+   $ python setup.py install
+   $ pip install simples3
 
-3. Include the required settings below.
-   DBBACKUP_STORAGE = 'dbbackup.storage.s3_storage'
-   DBBACKUP_S3_BUCKET = '<amazon_bucket_name>'
-   DBBACKUP_S3_ACCESS_KEY = '<amazon_access_key>'
-   DBBACKUP_S3_SECRET_KEY = '<amazon_secret_key>'
+2. Add ``dbbackup`` to ``INSTALLED_APPS`` in your settings.py file.
+
+3. Include the required settings below::
+
+     DBBACKUP_STORAGE = 'dbbackup.storage.s3_storage'
+     DBBACKUP_S3_BUCKET = '<amazon_bucket_name>'
+     DBBACKUP_S3_ACCESS_KEY = '<amazon_access_key>'
+     DBBACKUP_S3_SECRET_KEY = '<amazon_secret_key>'
+
 
 4. Now you're ready to use the backup management commands.
 
 
 AVAILABLE SETTINGS
 ------------------
-DBBACKUP_S3_BUCKET (required)
+``DBBACKUP_S3_BUCKET`` (required)
     The name of the Amazon S3 bucket to store your backups. This directory
     must exist before attempting to create your first backup.
 
-DBBACKUP_S3_ACCESS_KEY (required)
+``DBBACKUP_S3_ACCESS_KEY`` (required)
     Your Amazon Account Access Key. This can be found on your Amazon Account
     Security Credentials page. Note: Do not share this key with anyone you do
     not trust with access to your Amazon files.
 
-DBBACKUP_S3_SECRET_KEY (required)
+``DBBACKUP_S3_SECRET_KEY`` (required)
     Your Amazon Account Secret Key. This can be found in the same location as
     your Access Key above.
 
-DBBACKUP_S3_DIRECTORY (optional)
+``DBBACKUP_S3_DIRECTORY`` (optional)
     The directory in your Amazon S3 bucket you wish to save your backups. By
     default this is set to 'django-dbbackups/'.
 
-DBBACKUP_S3_DOMAIN (optional)
+``DBBACKUP_S3_DOMAIN`` (optional)
     Optionally specify the Amazon domain to use when transferring the
     generated backup files. For example, this can be set to
     's3-eu-west-1.amazonaws.com'. By default, this is
     's3.amazonaws.com'.
 
-DBBACKUP_S3_IS_SECURE (optional)
+``DBBACKUP_S3_IS_SECURE`` (optional)
     Should the S3 connection use SSL? Default is True
 
 
@@ -114,18 +120,20 @@ SETUP YOUR DROPBOX ACCOUNT
 SETUP YOUR DJANGO PROJECT
 -------------------------
 1. Install django-dbbackup and the required Python Dropbox Client API. If
-   using Pip, you can install this package using the following command:
-   >> cd django-dbbackup
-   >> python setup.py install
-   >> pip install hg+https://bitbucket.org/dropboxapi/dropbox-client-python
+   using Pip, you can install this package using the following command::
+
+   $ cd django-dbbackup
+   $ python setup.py install
+   $ pip install hg+https://bitbucket.org/dropboxapi/dropbox-client-python
 
 2. Add 'dbbackup' to INSTALLED_APPS in your settings.py file.
 
-3. Include the required settings below.
-   DBBACKUP_STORAGE = 'dbbackup.storage.dropbox_storage'
-   DBBACKUP_TOKENS_FILEPATH = '<local_tokens_filepath>'
-   DBBACKUP_DROPBOX_APP_KEY = '<dropbox_app_key>'
-   DBBACKUP_DROPBOX_APP_SECRET = '<dropbox_app_secret>'
+3. Include the required settings below::
+
+     DBBACKUP_STORAGE = 'dbbackup.storage.dropbox_storage'
+     DBBACKUP_TOKENS_FILEPATH = '<local_tokens_filepath>'
+     DBBACKUP_DROPBOX_APP_KEY = '<dropbox_app_key>'
+     DBBACKUP_DROPBOX_APP_SECRET = '<dropbox_app_secret>'
 
 4. Now you're ready to use the backup management commands. The first time you
    run a command you'll be prompted to visit a Dropbox URL to allow DBBackup
@@ -134,27 +142,27 @@ SETUP YOUR DJANGO PROJECT
 
 AVAILABLE SETTINGS
 ------------------
-DBBACKUP_TOKENS_FILEPATH (required)
+``DBBACKUP_TOKENS_FILEPATH`` (required)
     The local filepath to store the Dropbox oAuth request and tokens. This file
     will be auto-created, but should be treated like any other password to
     access your website. NOTE: Do not share these keys with anyone you do not
     trust with access to your Dropbox files.
 
-DBBACKUP_DROPBOX_APP_KEY (required)
+``DBBACKUP_DROPBOX_APP_KEY`` (required)
     Required string containing your Dropbox App Key. NOTE: Do not share these
     keys with anyone you do not trust with access to your Dropbox files.
 
-DBBACKUP_DROPBOX_APP_SECRET (required)
+``DBBACKUP_DROPBOX_APP_SECRET`` (required)
     Required string containing your Dropbox App Secret. NOTE: Do not share these
     keys with anyone you do not trust with access to your Dropbox files.
 
-DBBACKUP_DROPBOX_ACCESS_TYPE (optional)
+``DBBACKUP_DROPBOX_ACCESS_TYPE`` (optional)
     String containing your Dropbox Access Type. This is either 'dropbox' or
     'app_folder' depending on the access type specified when creating your
     application on the Dropbox website. This defaults to 'dropbox', assuming
     your application has full access to your Dropbox folder.
 
-DBBACKUP_DROPBOX_DIRECTORY (optional)
+``DBBACKUP_DROPBOX_DIRECTORY`` (optional)
     The directory in Dropbox you wish to save your backups. By default this is
     set to '/django-dbbackups/'.
 
@@ -180,22 +188,24 @@ system.
 
 SETUP YOUR DJANGO PROJECT
 -------------------------
-1. Install django-dbbackup application:
-   >> cd django-dbbackup
-   >> python setup.py install
+1. Install django-dbbackup application::
+
+   $ cd django-dbbackup
+   $ python setup.py install
 
 2. Add 'dbbackup' to INSTALLED_APPS in your settings.py file.
 
-3. Include the required settings below.
-   DBBACKUP_STORAGE = 'dbbackup.storage.filesystem_storage'
-   DBBACKUP_FILESYSTEM_DIRECTORY = '<local_directory_path>'
+3. Include the required settings below::
+
+    DBBACKUP_STORAGE = 'dbbackup.storage.filesystem_storage'
+    DBBACKUP_FILESYSTEM_DIRECTORY = '<local_directory_path>'
 
 4. Now you're ready to use the backup management commands.
 
 
 AVAILABLE SETTINGS
 ------------------
-DBBACKUP_FILESYSTEM_DIRECTORY (required)
+``DBBACKUP_FILESYSTEM_DIRECTORY`` (required)
     The directory on your local system you wish to save your backups.
 
 
@@ -217,58 +227,64 @@ you might consider fully customizing the admin commands.
 
 MYSQL
 -----
-DBBACKUP_MYSQL_EXTENSION (optional)
+``DBBACKUP_MYSQL_EXTENSION`` (optional)
     Extension to use for a mysql backup. By default this is 'mysql'.
 
-DBBACKUP_MYSQL_BACKUP_COMMANDS (optional)
+``DBBACKUP_MYSQL_BACKUP_COMMANDS`` (optional)
     List of commands to use execute when creating a backup. Commands are sent
     to popen and should be split into shlex tokens. By default, the following
-    command is run:
-    >> mysqldump --user={adminuser} --password={password} --host={host} --port={port} {databasename} >
+    command is run::
 
-DBBACKUP_MYSQL_RESTORE_COMMANDS (optional)
+    $ mysqldump --user={adminuser} --password={password} --host={host} --port={port} {databasename} >
+
+``DBBACKUP_MYSQL_RESTORE_COMMANDS`` (optional)
     List of commands to use execute when creating a backup. Commands are sent
     to popen and should be split into shlex tokens. By default, the following
-    command is run:
-    >> mysql --user={adminuser} --password={password} --host={host} --port={port} {databasename} <
+    command is run::
+
+    $ mysql --user={adminuser} --password={password} --host={host} --port={port} {databasename} <
 
 
 POSTGRES
 --------
-DBBACKUP_POSTGRES_EXTENSION (optional)
+``DBBACKUP_POSTGRES_EXTENSION`` (optional)
     Extension to use for a postgres backup. By default this is 'psql'.
 
-DBBACKUP_POSTGRES_BACKUP_COMMANDS (optional)
+``DBBACKUP_POSTGRES_BACKUP_COMMANDS`` (optional)
     List of commands to use execute when creating a backup. Commands are sent
     to popen and should be split into shlex tokens. By default, the following
-    command is run:
-    >> pg_dump --username={adminuser} --host={host} --port={port} {databasename} >
+    command is run::
 
-DBBACKUP_POSTGRES_RESTORE_COMMANDS (optional)
+      $ pg_dump --username={adminuser} --host={host} --port={port} {databasename} >
+
+``DBBACKUP_POSTGRES_RESTORE_COMMANDS`` (optional)
     List of commands to use execute when restoring a backup. Commands are sent
     to popen and should be split into shlex tokens. By default, the following
-    commands are run:
-    >> dropdb --username={adminuser} --host={host} --port={port} {databasename}
-    >> createdb --username={adminuser} --host={host} --port={port} --owner={username} {databasename}
-    >> psql --username={adminuser} --host={host} --port={port} --single-transaction {databasename} <
+    commands are run::
+
+      $ dropdb --username={adminuser} --host={host} --port={port} {databasename}
+      $ createdb --username={adminuser} --host={host} --port={port} --owner={username} {databasename}
+      $ psql --username={adminuser} --host={host} --port={port} --single-transaction {databasename} <
 
 
 SQLITE
 ------
-DBBACKUP_SQLITE_EXTENSION (optional)
+``DBBACKUP_SQLITE_EXTENSION`` (optional)
     Extension to use for an sqlite backup. By default this is 'sqlite'.
 
-DBBACKUP_SQLITE_BACKUP_COMMANDS (optional)
+``DBBACKUP_SQLITE_BACKUP_COMMANDS`` (optional)
     List of commands to use execute when creating a backup. Commands are sent to
     popen and should be split into shlex tokens. By default, the following
-    command is run:
-    >> [READ_FILE, '{databasename}']
+    command is run::
 
-DBBACKUP_SQLITE_RESTORE_COMMANDS (optional)
+      $ [READ_FILE, '{databasename}']
+
+``DBBACKUP_SQLITE_RESTORE_COMMANDS`` (optional)
     List of commands to use execute when restoring a backup. Commands are sent
     to popen and should be split into shlex tokens. By default, the following
-    command is run:
-    >> [WRITE_FILE, '{databasename}']
+    command is run::
+
+      $ [WRITE_FILE, '{databasename}']
 
 
 
@@ -280,12 +296,19 @@ When creating backup or restore commands, there are a few template variables
 you can use in the commands (listed below). Also note, ending a command with >
 or < will pipe the file contents from or to the command respectively.
 
-    {databasename}: Name of the database from settings.py
-    {servername}: Optional SERVER_NAME setting in settings.py
-    {datetime}: Current datetime string (see DBBACKUP_DATE_FORMAT).
-    {extension}: File extension for the current database.
+``{databasename}``
+    Name of the database from settings.py
 
-There are also two special commands READ_FILE and WRITE_FILE which take the
+``{servername}``
+    Optional ``SERVER_NAME`` setting in settings.py
+
+``{datetime}``
+    Current datetime string (see ``DBBACKUP_DATE_FORMAT``).
+
+``{extension}``
+  File extension for the current database.
+
+There are also two special commands ``READ_FILE`` and ``WRITE_FILE`` which take the
 form of a two-item list, the second item being the file to read or write.
 Please see the SQLite settings above for reference.
 
@@ -294,26 +317,26 @@ Please see the SQLite settings above for reference.
 =================
  GLOBAL SETTINGS
 =================
-DBBACKUP_STORAGE (required)
+``DBBACKUP_STORAGE`` (required)
     String pointing to django-dbbackup location module to use when performing a
     backup. You can see the exact definitions to use in the required settings
     for the backup location of your choice above.
 
-DBBACKUP_SEND_EMAIL (optional)
+``DBBACKUP_SEND_EMAIL`` (optional)
     Controls whether or not django-dbbackup sends an error email when an
     uncaught exception is received. This is ``True`` by default.
 
-DBBACKUP_DATE_FORMAT (optional)
+``DBBACKUP_DATE_FORMAT`` (optional)
     The Python datetime format to use when generating the backup filename. By
     default this is '%Y-%m-%d-%H%M%S'.
 
-DBBACKUP_SERVER_NAME (optional)
+``DBBACKUP_SERVER_NAME`` (optional)
     An optional server name to use when generating the backup filename. This is
     useful to help distinguish between development and production servers. By
     default this value is not used and the servername is not included in the
     generated filename.
 
-DBBACKUP_FILENAME_TEMPLATE (optional)
+``DBBACKUP_FILENAME_TEMPLATE`` (optional)
     The template to use when generating the backup filename. By default this is
     '{databasename}-{servername}-{datetime}.{extension}'. This setting can
     also be made a method which takes the following keyword arguments:
@@ -326,14 +349,14 @@ DBBACKUP_FILENAME_TEMPLATE (optional)
     Amazon S3's automatic expiry feature, you need to prefix your backups
     differently based on when you want them to expire.
 
-DBBACKUP_CLEANUP_KEEP (optional)
+``DBBACKUP_CLEANUP_KEEP`` (optional)
     The number of backups to keep when specifying the --clean flag. Defaults to
     keeping 10 + the first backup of each month.
 
-DBBACKUP_GPG_RECIPIENT (optional)
+``DBBACKUP_GPG_RECIPIENT`` (optional)
     The name of the key that is used for encryption. This setting is only used when making a backup with the --encrypt opton.
 
-DBBACKUP_MEDIA_PATH (optional)
+``DBBACKUP_MEDIA_PATH`` (optional)
     The path that will be backed up by the 'backup_media' command. If this option is not set, then the MEDIA_ROOT setting is used.
 
 
@@ -341,11 +364,14 @@ DBBACKUP_MEDIA_PATH (optional)
  ENCRYPTION
 ============
 
-You can encrypt a backup with the --encrypt option. The backup is done using gpg.
-    >> python manage.py dbbackup --encrypt
+You can encrypt a backup with the --encrypt option. The backup is done using gpg::
+
+    $ python manage.py dbbackup --encrypt
 
 Requirements:
-- Install the python package 'python-gnupg'
-    >> pip install python-gnupg
+- Install the python package 'python-gnupg'::
+
+    $ pip install python-gnupg
+
 - You need gpg key.
-- Set the setting 'DBBACKUP_GPG_RECIPIENT' to the name of the gpg key.
+- Set the setting ``DBBACKUP_GPG_RECIPIENT`` to the name of the gpg key.
