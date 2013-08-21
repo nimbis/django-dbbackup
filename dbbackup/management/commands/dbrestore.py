@@ -3,6 +3,7 @@ Restore pgdump files from Dropbox.
 See __init__.py for a list of options.
 """
 import os
+import stat
 import tempfile
 import gzip
 
@@ -16,6 +17,18 @@ from django.core.management.base import CommandError
 from django.core.management.base import LabelCommand
 from django.db import connection
 from optparse import make_option
+
+def is_gpg_agent_running():
+    """ Check if gpg agent is running """
+    if 'GPG_AGENT_INFO' not in os.environ:
+        return False
+
+    # Example GPG_AGENT_INFO:
+    # /Users/lorin/.gnupg/S.gpg-agent:192:1
+    socket = os.environ['GPG_AGENT_INFO'].split(':')[0]
+    # Verify it's there and it's a socket
+    return os.path.exists(socket) and stat.S_ISSOCK(os.stat(socket).st_mode)
+
 
 
 class Command(LabelCommand):
@@ -106,14 +119,18 @@ class Command(LabelCommand):
             temp_filename = os.path.join(temp_dir, new_basename)
             try:
                 inputfile.seek(0)
-                g = gnupg.GPG()
-                try:
-                    passphrase = os.environ['GPG_PASSPHRASE']
-                except:
-                    passphrase=get_passphrase()
-
-
-                result = g.decrypt_file(file=inputfile, passphrase=passphrase, output=temp_filename)
+                # If there's an agent present, use it
+                if is_gpg_agent_running():
+                    g = gnupg.GPG(use_agent=True)
+                    result = g.decrypt_file(file=inputfile, output=temp_filename)
+                else:
+                    # If there's no agent, we need to retrieve the passphrase
+                    g = gnupg.GPG(use_agent=False)
+                    try:
+                        passphrase = os.environ['GPG_PASSPHRASE']
+                    except:
+                        passphrase=get_passphrase()
+                    result = g.decrypt_file(file=inputfile, passphrase=passphrase, output=temp_filename)
 
                 if not result:
                     raise Exception('Decryption failed; status: %s' % result.status)
